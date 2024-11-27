@@ -1,4 +1,4 @@
-//! # sabiniwm: A tiling Wayland compositor, influenced xmonad
+//! # sabiniwm: A tiling Wayland compositor, influenced by xmonad
 //!
 //! Not documented yet. Wait for v0.1.0.
 
