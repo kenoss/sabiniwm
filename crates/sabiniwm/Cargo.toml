@@ -2,6 +2,14 @@
 name = "sabiniwm"
 version = "0.0.0"
 edition = "2021"
+authors = ["keno (Ken Okada) <keno.ss57@gmail.com>"]
+description = "A tiling Wayland compositor, influenced xmonad"
+documentation = "https://docs.rs/sabiniwm"
+repository = "https://github.com/kenoss/sabiniwm"
+categories = ["gui", "graphics"]
+keywords = ["wayland", "compositor", "xmonad", "tiling"]
+license = "MIT OR Apache-2.0"
+rust-version = "1.82.0"
 
 [dependencies]
 backtrace = "0.3.71"

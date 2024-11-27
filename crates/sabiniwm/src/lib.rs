@@ -1,3 +1,7 @@
+//! # sabiniwm: A tiling Wayland compositor, influenced xmonad
+//!
+//! Not documented yet. Wait for v0.1.0.
+
 #[allow(unused_imports)]
 #[macro_use]
 extern crate tracing;
