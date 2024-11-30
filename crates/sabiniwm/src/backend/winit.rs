@@ -222,9 +222,10 @@ impl EventHandler<WinitEvent> for SabiniwmState {
                 output.set_preferred(mode);
                 output.change_current_state(Some(mode), None, None, None);
                 this.inner.space.map_output(output, (0, 0));
-                this.inner
-                    .view
-                    .resize_output(size.to_logical(1), &mut this.inner.space);
+                let size = this.inner.space.output_geometry(output)
+                    .unwrap(/* Space::map_output() and Output::change_current_state() is called. */)
+                    .size;
+                this.inner.view.resize_output(size, &mut this.inner.space);
             }
             WinitEvent::Focus(_) | WinitEvent::Redraw => {}
         }
