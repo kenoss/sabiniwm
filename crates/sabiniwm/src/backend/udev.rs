@@ -1525,13 +1525,10 @@ impl EventHandler<InputEvent<LibinputInputBackend>> for SabiniwmState {
             InputEvent::DeviceAdded { mut device } => {
                 info!("InputEvent::DeviceAdded:{:?}", LibinputDeviceInfo(&device));
 
-                if device.has_capability(libinput::DeviceCapability::Pointer) {
-                    let _ = device.config_send_events_set_mode(libinput::SendEventsMode::ENABLED);
-                }
-
-                if device.has_capability(libinput::DeviceCapability::Touch) {
-                    let _ = device.config_send_events_set_mode(libinput::SendEventsMode::ENABLED);
-                }
+                self.as_udev_mut()
+                    .backend
+                    .input_devices
+                    .insert(device.clone());
 
                 if device.has_capability(libinput::DeviceCapability::Keyboard) {
                     if let Some(led_state) = self
@@ -1544,10 +1541,17 @@ impl EventHandler<InputEvent<LibinputInputBackend>> for SabiniwmState {
                     }
                 }
 
-                self.as_udev_mut()
-                    .backend
-                    .input_devices
-                    .insert(device.clone());
+                if device.has_capability(libinput::DeviceCapability::Pointer) {
+                    let _ = device.config_send_events_set_mode(libinput::SendEventsMode::ENABLED);
+                }
+
+                if device.has_capability(libinput::DeviceCapability::Touch) {
+                    let _ = device.config_send_events_set_mode(libinput::SendEventsMode::ENABLED);
+                }
+
+                self.inner
+                    .config_delegate
+                    .config_input_device_on_added(&mut device);
             }
             InputEvent::DeviceRemoved { device } => {
                 info!(

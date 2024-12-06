@@ -1,5 +1,5 @@
 use crate as sabiniwm;
-use smithay::reexports::drm;
+use smithay::reexports::{drm, input as libinput};
 
 /// Unstable configuration points.
 ///
@@ -56,6 +56,10 @@ pub trait ConfigDelegateUnstableI {
         connector_info: &drm::control::connector::Info,
     ) -> (drm::control::Mode, smithay::output::Scale) {
         unstable_default::select_mode_and_scale_on_connecter_added(connector_info)
+    }
+
+    fn config_input_device_on_added(&self, device: &mut libinput::Device) {
+        unstable_default::config_input_device_on_added(device);
     }
 }
 
@@ -219,6 +223,18 @@ pub mod unstable_default {
         smithay::output::Scale::Custom {
             advertised_integer: 1,
             fractional: actual_from_logical,
+        }
+    }
+
+    pub fn config_input_device_on_added(device: &mut libinput::Device) {
+        let is_touchpad = device.config_tap_finger_count() > 0;
+        if is_touchpad {
+            info!(
+                "click set method: {:?}, {:?}",
+                device.config_click_method(),
+                device.config_click_methods()
+            );
+            let _ = device.config_click_set_method(libinput::ClickMethod::ButtonAreas);
         }
     }
 }
