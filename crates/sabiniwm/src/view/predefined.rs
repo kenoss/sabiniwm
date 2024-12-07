@@ -5,21 +5,23 @@ use crate::view::layout_node::{LayoutMessage, LayoutMessageI, LayoutNode, Layout
 use crate::view::window::{Border, Thickness};
 pub use itertools::izip;
 
+#[derive(Clone)]
 pub struct LayoutFull {}
 
 impl LayoutNodeI for LayoutFull {
     fn layout(&self, api: &mut ViewLayoutApi<'_>) {
-        if let Some(&window_id) = api.stackset().workspaces().focus().stack().focus() {
+        if let Some(&window_id) = api.workspace().stack().focus() {
             api.layout_window(window_id, *api.rect());
         }
     }
 }
 
+#[derive(Clone)]
 pub struct LayoutTall {}
 
 impl LayoutNodeI for LayoutTall {
     fn layout(&self, api: &mut ViewLayoutApi<'_>) {
-        let mut head = api.stackset().workspaces().focus().stack().as_vec().clone();
+        let mut head = api.workspace.stack().as_vec().clone();
         match head.len() {
             0 => {}
             1 => {
@@ -48,6 +50,7 @@ pub enum LayoutMessageSelect {
 
 impl LayoutMessageI for LayoutMessageSelect {}
 
+#[derive(Clone)]
 pub struct LayoutNodeSelect {
     node_ids: NonEmptyFocusedVec<Id<LayoutNode>>,
 }
@@ -89,6 +92,7 @@ pub struct LayoutMessageToggle;
 
 impl LayoutMessageI for LayoutMessageToggle {}
 
+#[derive(Clone)]
 pub struct LayoutNodeToggle {
     node_ids: NonEmptyFocusedVec<Id<LayoutNode>>,
 }

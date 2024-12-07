@@ -1,6 +1,6 @@
 use crate::util::{FocusedVec, Id, NonEmptyFocusedVec};
 use crate::view::api::{ViewHandleMessageApi, ViewLayoutApi};
-use crate::view::layout_node::{LayoutMessage, LayoutNode};
+use crate::view::layout_node::{LayoutMessage, LayoutNode, LayoutTreeBuilder};
 use crate::view::predefined::{
     LayoutFull, LayoutNodeBorder, LayoutNodeMargin, LayoutNodeSelect, LayoutNodeToggle, LayoutTall,
 };
@@ -8,7 +8,6 @@ use crate::view::stackset::{StackSet, WorkspaceTag};
 use crate::view::window::{Border, Rgba, Window, WindowProps};
 use itertools::Itertools;
 use smithay::utils::{Logical, Rectangle, Size};
-use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 
 pub struct View {
@@ -18,11 +17,9 @@ pub struct View {
 
 pub(super) struct ViewState {
     pub(super) stackset: StackSet,
-    pub(super) nodes: HashMap<Id<LayoutNode>, RefCell<LayoutNode>>,
     // TODO: Rename.
     pub(super) layout_queue: Vec<(Id<Window>, WindowProps)>,
     pub(super) windows: HashMap<Id<Window>, Window>,
-    pub(super) root_node_id: Id<LayoutNode>,
     pub(super) rect: Rectangle<i32, Logical>,
 }
 
@@ -32,21 +29,21 @@ impl View {
 
         let node = LayoutNode::from(LayoutTall {});
         let node_id0 = node.id();
-        nodes.insert(node_id0, RefCell::new(node));
+        nodes.insert(node_id0, node);
 
         let node = LayoutNode::from(LayoutFull {});
         let node_id1 = node.id();
-        nodes.insert(node_id1, RefCell::new(node));
+        nodes.insert(node_id1, node);
 
         let layouts = NonEmptyFocusedVec::new(vec![node_id0, node_id1], 0);
         let node = LayoutNode::from(LayoutNodeSelect::new(layouts));
         let node_id = node.id();
-        nodes.insert(node_id, RefCell::new(node));
+        nodes.insert(node_id, node);
 
         let margin = 8.into();
         let node = LayoutNode::from(LayoutNodeMargin::new(node_id, margin));
         let node_id = node.id();
-        nodes.insert(node_id, RefCell::new(node));
+        nodes.insert(node_id, node);
 
         let border = Border {
             dim: 2.into(),
@@ -55,24 +52,24 @@ impl View {
         };
         let node = LayoutNode::from(LayoutNodeBorder::new(node_id, border));
         let node_id = node.id();
-        nodes.insert(node_id, RefCell::new(node));
+        nodes.insert(node_id, node);
 
         let node = LayoutNode::from(LayoutFull {});
         let node_id_full = node.id();
-        nodes.insert(node_id_full, RefCell::new(node));
+        nodes.insert(node_id_full, node);
 
         let node = LayoutNode::from(LayoutNodeToggle::new(node_id, node_id_full));
         let node_id = node.id();
-        nodes.insert(node_id, RefCell::new(node));
+        nodes.insert(node_id, node);
 
-        let stackset = StackSet::new(workspace_tags);
+        let layout_tree_builder = LayoutTreeBuilder::new(nodes, node_id);
+
+        let stackset = StackSet::new(workspace_tags, layout_tree_builder);
 
         let state = ViewState {
             stackset,
-            nodes,
             layout_queue: Vec::new(),
             windows: HashMap::new(),
-            root_node_id: node_id,
             rect,
         };
         Self { state }
@@ -160,13 +157,17 @@ impl View {
         assert!(self.state.layout_queue.is_empty());
 
         // Layout
-        let root_node_id = self.state.root_node_id;
+        let workspace = self.state.stackset.workspaces().focus();
+        // Safety: `LayoutTree` is not borrowed in `ViewLayoutApi`.
+        let layout_tree = unsafe { workspace.borrow_layout_tree() };
         let rect = self.state.rect;
         let mut api = ViewLayoutApi {
-            state: &mut self.state,
+            workspace,
+            layout_tree,
+            layout_queue: &mut self.state.layout_queue,
             rect,
         };
-        api.layout_node(root_node_id, rect);
+        api.layout_node_root();
 
         // Remove windows from the space that are not in layout result.
         let mut removing_window_ids = space.elements().map(|w| w.id()).collect::<HashSet<_>>();
@@ -207,11 +208,11 @@ impl View {
         message: &LayoutMessage,
         space: &mut smithay::desktop::Space<Window>,
     ) {
-        let root_node_id = self.state.root_node_id;
-        let mut api = ViewHandleMessageApi {
-            state: &mut self.state,
-        };
-        api.handle_message(root_node_id, message);
+        let workspace = self.state.stackset.workspaces().focus();
+        // Safety: `LayoutTree` is not borrowed in `ViewLayoutApi`.
+        let layout_tree = unsafe { workspace.borrow_layout_tree() };
+        let mut api = ViewHandleMessageApi { layout_tree };
+        api.handle_message_root(message);
 
         self.layout(space);
     }
