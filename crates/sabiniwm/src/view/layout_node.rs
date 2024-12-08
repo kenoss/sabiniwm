@@ -85,7 +85,7 @@ impl LayoutNode {
 }
 
 #[derive(Clone)]
-pub(super) struct LayoutTreeBuilder {
+pub struct LayoutTreeBuilder {
     nodes: HashMap<Id<LayoutNode>, LayoutNode>,
     root_id: Id<LayoutNode>,
 }
@@ -100,7 +100,7 @@ impl LayoutTreeBuilder {
         Self { nodes, root_id }
     }
 
-    pub fn build(self) -> LayoutTree {
+    pub(super) fn build(self) -> LayoutTree {
         let nodes = self
             .nodes
             .into_iter()

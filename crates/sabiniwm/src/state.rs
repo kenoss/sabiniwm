@@ -310,7 +310,7 @@ impl SabiniwmState {
         };
 
         let rect = Rectangle::from_loc_and_size((0, 0), (1280, 720));
-        let view = View::new(rect, workspace_tags);
+        let view = View::new(&config_delegate, rect, workspace_tags);
 
         Ok(SabiniwmState {
             backend,

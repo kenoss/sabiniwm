@@ -1,16 +1,14 @@
-use crate::util::{FocusedVec, Id, NonEmptyFocusedVec};
+use crate::config::{ConfigDelegate, ConfigDelegateUnstableI};
+use crate::util::{FocusedVec, Id};
 use crate::view::api::{ViewHandleMessageApi, ViewLayoutApi};
-use crate::view::layout_node::{LayoutMessage, LayoutNode, LayoutTreeBuilder};
-use crate::view::predefined::{
-    LayoutFull, LayoutNodeBorder, LayoutNodeMargin, LayoutNodeSelect, LayoutNodeToggle, LayoutTall,
-};
+use crate::view::layout_node::LayoutMessage;
 use crate::view::stackset::{StackSet, WorkspaceTag};
-use crate::view::window::{Border, Rgba, Window, WindowProps};
+use crate::view::window::{Window, WindowProps};
 use itertools::Itertools;
 use smithay::utils::{Logical, Rectangle, Size};
 use std::collections::{HashMap, HashSet};
 
-pub struct View {
+pub(crate) struct View {
     // TODO: Avoid internal struct if possible.
     state: ViewState,
 }
@@ -24,46 +22,12 @@ pub(super) struct ViewState {
 }
 
 impl View {
-    pub fn new(rect: Rectangle<i32, Logical>, workspace_tags: Vec<WorkspaceTag>) -> Self {
-        let mut nodes = HashMap::new();
-
-        let node = LayoutNode::from(LayoutTall {});
-        let node_id0 = node.id();
-        nodes.insert(node_id0, node);
-
-        let node = LayoutNode::from(LayoutFull {});
-        let node_id1 = node.id();
-        nodes.insert(node_id1, node);
-
-        let layouts = NonEmptyFocusedVec::new(vec![node_id0, node_id1], 0);
-        let node = LayoutNode::from(LayoutNodeSelect::new(layouts));
-        let node_id = node.id();
-        nodes.insert(node_id, node);
-
-        let margin = 8.into();
-        let node = LayoutNode::from(LayoutNodeMargin::new(node_id, margin));
-        let node_id = node.id();
-        nodes.insert(node_id, node);
-
-        let border = Border {
-            dim: 2.into(),
-            active_rgba: Rgba::from_rgba(0x556b2fff),
-            inactive_rgba: Rgba::from_rgba(0x00000000),
-        };
-        let node = LayoutNode::from(LayoutNodeBorder::new(node_id, border));
-        let node_id = node.id();
-        nodes.insert(node_id, node);
-
-        let node = LayoutNode::from(LayoutFull {});
-        let node_id_full = node.id();
-        nodes.insert(node_id_full, node);
-
-        let node = LayoutNode::from(LayoutNodeToggle::new(node_id, node_id_full));
-        let node_id = node.id();
-        nodes.insert(node_id, node);
-
-        let layout_tree_builder = LayoutTreeBuilder::new(nodes, node_id);
-
+    pub fn new(
+        config_delegate: &ConfigDelegate,
+        rect: Rectangle<i32, Logical>,
+        workspace_tags: Vec<WorkspaceTag>,
+    ) -> Self {
+        let layout_tree_builder = config_delegate.make_layout_tree_builder();
         let stackset = StackSet::new(workspace_tags, layout_tree_builder);
 
         let state = ViewState {
@@ -75,14 +39,12 @@ impl View {
         Self { state }
     }
 
-    pub fn startup(&mut self) {
-        // TODO: Remove?
-    }
-
     pub fn stackset(&self) -> &StackSet {
         &self.state.stackset
     }
 
+    // TODO: Remove?
+    #[allow(unused)]
     pub fn window(&self, window_id: Id<Window>) -> Option<&Window> {
         self.state.windows.get(&window_id)
     }

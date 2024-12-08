@@ -1,3 +1,4 @@
+use crate as sabiniwm;
 use smithay::reexports::drm;
 
 /// Unstable configuration points.
@@ -7,6 +8,10 @@ use smithay::reexports::drm;
 /// Please start discussion on GitHub if you have an opinion, e.g. adding/changing configuration points.
 #[thin_delegate::register]
 pub trait ConfigDelegateUnstableI {
+    fn make_layout_tree_builder(&self) -> sabiniwm::view::layout_node::LayoutTreeBuilder {
+        unstable_default::make_layout_tree_builder()
+    }
+
     fn select_mode_and_scale_on_connecter_added(
         &self,
         connector_info: &drm::control::connector::Info,
@@ -41,6 +46,56 @@ impl ConfigDelegateUnstableI for ConfigDelegateUnstableDefault {}
 
 pub mod unstable_default {
     use super::*;
+
+    pub fn make_layout_tree_builder() -> sabiniwm::view::layout_node::LayoutTreeBuilder {
+        use sabiniwm::util::NonEmptyFocusedVec;
+        use sabiniwm::view::layout_node::{LayoutNode, LayoutTreeBuilder};
+        use sabiniwm::view::predefined::{
+            LayoutFull, LayoutNodeBorder, LayoutNodeMargin, LayoutNodeSelect, LayoutNodeToggle,
+            LayoutTall,
+        };
+        use sabiniwm::view::window::{Border, Rgba};
+        use std::collections::HashMap;
+
+        let mut nodes = HashMap::new();
+
+        let node = LayoutNode::from(LayoutTall {});
+        let node_id0 = node.id();
+        nodes.insert(node_id0, node);
+
+        let node = LayoutNode::from(LayoutFull {});
+        let node_id1 = node.id();
+        nodes.insert(node_id1, node);
+
+        let layouts = NonEmptyFocusedVec::new(vec![node_id0, node_id1], 0);
+        let node = LayoutNode::from(LayoutNodeSelect::new(layouts));
+        let node_id = node.id();
+        nodes.insert(node_id, node);
+
+        let margin = 8.into();
+        let node = LayoutNode::from(LayoutNodeMargin::new(node_id, margin));
+        let node_id = node.id();
+        nodes.insert(node_id, node);
+
+        let border = Border {
+            dim: 2.into(),
+            active_rgba: Rgba::from_rgba(0x556b2fff),
+            inactive_rgba: Rgba::from_rgba(0x00000000),
+        };
+        let node = LayoutNode::from(LayoutNodeBorder::new(node_id, border));
+        let node_id = node.id();
+        nodes.insert(node_id, node);
+
+        let node = LayoutNode::from(LayoutFull {});
+        let node_id_full = node.id();
+        nodes.insert(node_id_full, node);
+
+        let node = LayoutNode::from(LayoutNodeToggle::new(node_id, node_id_full));
+        let node_id = node.id();
+        nodes.insert(node_id, node);
+
+        LayoutTreeBuilder::new(nodes, node_id)
+    }
 
     pub fn select_mode_and_scale_on_connecter_added(
         connector_info: &drm::control::connector::Info,
