@@ -32,4 +32,8 @@ pub(crate) mod util;
 pub mod view;
 pub(crate) mod wl_global;
 
+pub mod reexports {
+    pub use smithay;
+}
+
 pub use state::{ClientState, SabiniwmState};

@@ -5,8 +5,9 @@ extern crate maplit;
 use big_s::S;
 use itertools::Itertools;
 use sabiniwm::action::{self, Action, ActionFnI};
-use sabiniwm::config::ConfigDelegateUnstableDefault;
+use sabiniwm::config::{ConfigDelegateUnstableI, XkbConfig};
 use sabiniwm::input::{KeySeqSerde, Keymap, ModMask};
+use sabiniwm::reexports::smithay;
 use sabiniwm::view::predefined::{LayoutMessageSelect, LayoutMessageToggle};
 use sabiniwm::view::stackset::WorkspaceTag;
 use sabiniwm::SabiniwmState;
@@ -54,6 +55,22 @@ fn tracing_init() -> eyre::Result<()> {
     }
 
     Ok(())
+}
+
+struct Config;
+
+impl ConfigDelegateUnstableI for Config {
+    fn get_xkb_config(&self) -> XkbConfig<'_> {
+        let xkb_config = smithay::input::keyboard::XkbConfig {
+            layout: "custom",
+            ..Default::default()
+        };
+        XkbConfig {
+            xkb_config,
+            repeat_delay: 200,
+            repeat_rate: 60,
+        }
+    }
 }
 
 fn main() -> eyre::Result<()> {
@@ -152,7 +169,7 @@ fn main() -> eyre::Result<()> {
     }));
     let keymap = Keymap::new(keymap);
 
-    let config_delegate = Box::new(ConfigDelegateUnstableDefault);
+    let config_delegate = Box::new(Config);
 
     SabiniwmState::run(config_delegate, workspace_tags, keymap)?;
 

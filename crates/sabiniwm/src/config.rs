@@ -8,6 +8,10 @@ use smithay::reexports::drm;
 /// Please start discussion on GitHub if you have an opinion, e.g. adding/changing configuration points.
 #[thin_delegate::register]
 pub trait ConfigDelegateUnstableI {
+    fn get_xkb_config(&self) -> sabiniwm::config::XkbConfig<'_> {
+        unstable_default::get_xkb_config()
+    }
+
     fn make_layout_tree_builder(&self) -> sabiniwm::view::layout_node::LayoutTreeBuilder {
         unstable_default::make_layout_tree_builder()
     }
@@ -18,6 +22,13 @@ pub trait ConfigDelegateUnstableI {
     ) -> (drm::control::Mode, smithay::output::Scale) {
         unstable_default::select_mode_and_scale_on_connecter_added(connector_info)
     }
+}
+
+#[derive(Debug)]
+pub struct XkbConfig<'a> {
+    pub xkb_config: smithay::input::keyboard::XkbConfig<'a>,
+    pub repeat_delay: u16,
+    pub repeat_rate: u16,
 }
 
 #[thin_delegate::register]
@@ -47,6 +58,15 @@ impl ConfigDelegateUnstableI for ConfigDelegateUnstableDefault {}
 pub mod unstable_default {
     use super::*;
 
+    pub fn get_xkb_config() -> sabiniwm::config::XkbConfig<'static> {
+        use sabiniwm::config::XkbConfig;
+
+        XkbConfig {
+            xkb_config: Default::default(),
+            repeat_delay: 200,
+            repeat_rate: 60,
+        }
+    }
     pub fn make_layout_tree_builder() -> sabiniwm::view::layout_node::LayoutTreeBuilder {
         use sabiniwm::util::NonEmptyFocusedVec;
         use sabiniwm::view::layout_node::{LayoutNode, LayoutTreeBuilder};

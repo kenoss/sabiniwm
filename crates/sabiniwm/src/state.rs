@@ -263,19 +263,13 @@ impl SabiniwmState {
         let cursor_status = Arc::new(Mutex::new(CursorImageStatus::default_named()));
         let pointer = seat.add_pointer();
 
-        // TODO: Support proper config.
-        if let Some(config) = &envvar.xkb_config()? {
-            let xkb_config = smithay::input::keyboard::XkbConfig {
-                layout: &config.layout,
-                ..Default::default()
-            };
-            seat.add_keyboard(
-                xkb_config,
-                config.repeat_delay.into(),
-                config.repeat_rate.into(),
-            )
-            .unwrap();
-        }
+        let xkb_config = config_delegate.get_xkb_config();
+        seat.add_keyboard(
+            xkb_config.xkb_config,
+            xkb_config.repeat_delay.into(),
+            xkb_config.repeat_rate.into(),
+        )
+        .unwrap();
 
         let cursor_status2 = cursor_status.clone();
         seat.tablet_seat()

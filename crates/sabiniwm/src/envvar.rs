@@ -26,8 +26,6 @@ pub(crate) struct EnvVarSabiniwm {
     pub disable_10bit: bool,
     #[serde(default = "Default::default")]
     pub surface_composition_policy: SurfaceCompositionPolicy,
-    #[serde(default = "Default::default")]
-    pub xkb_config: Option<String>,
 }
 
 // https://github.com/serde-rs/serde/issues/1030
@@ -43,20 +41,4 @@ impl EnvVar {
             sabiniwm: envy::prefixed("SABINIWM_").from_env()?,
         })
     }
-
-    pub fn xkb_config(&self) -> eyre::Result<Option<XkbConfig>> {
-        self.sabiniwm
-            .xkb_config
-            .as_deref()
-            .map(serde_json::from_str)
-            .transpose()
-            .map_err(|e| e.into())
-    }
-}
-
-#[derive(Debug, serde::Deserialize)]
-pub(crate) struct XkbConfig {
-    pub layout: String,
-    pub repeat_delay: u16,
-    pub repeat_rate: u16,
 }
