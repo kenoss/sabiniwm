@@ -1,3 +1,4 @@
+use crate::config::{ConfigDelegate, ConfigDelegateUnstableI};
 use crate::input::keymap::KeymapEntry;
 use crate::input::KeySeq;
 use crate::state::SabiniwmState;
@@ -14,6 +15,18 @@ use smithay::utils::{Logical, Point, Serial, SERIAL_COUNTER};
 impl SabiniwmState {
     pub(crate) fn process_input_event<I: InputBackend>(&mut self, event: InputEvent<I>) {
         let serial = SERIAL_COUNTER.next_serial();
+
+        let should_update_focus = self.inner.focus_update_decider.should_update_focus(
+            &self.inner.config_delegate,
+            &self.inner.seat,
+            &self.inner.space,
+            Timing::BeforeProcessEvent,
+            &event,
+        );
+        if should_update_focus {
+            let pointer = self.inner.seat.get_pointer().unwrap();
+            self.update_focus(serial, pointer.current_location());
+        }
 
         match &event {
             InputEvent::DeviceAdded { .. } | InputEvent::DeviceRemoved { .. } => {
@@ -219,8 +232,10 @@ impl SabiniwmState {
         }
 
         let should_update_focus = self.inner.focus_update_decider.should_update_focus(
+            &self.inner.config_delegate,
             &self.inner.seat,
             &self.inner.space,
+            Timing::AfterProcessEvent,
             &event,
         );
         if should_update_focus {
@@ -260,14 +275,18 @@ impl SabiniwmState {
     }
 }
 
-// Focus follows mouse.
-//
-// Prevents updating focus due to too high sensitivity of touchpad.
-//
-// TODO: Stabilize interface and make it public for configuration.
+/// Focus follows mouse.
+///
+/// Prevents updating focus due to too high sensitivity of touchpad.
 pub(crate) struct FocusUpdateDecider {
     last_window_id: Option<Id<Window>>,
     last_pos: Point<f64, Logical>,
+}
+
+#[derive(Debug)]
+enum Timing {
+    BeforeProcessEvent,
+    AfterProcessEvent,
 }
 
 #[allow(dead_code)]
@@ -283,8 +302,10 @@ impl FocusUpdateDecider {
 
     fn should_update_focus<I>(
         &mut self,
+        config_delegate: &ConfigDelegate,
         seat: &smithay::input::Seat<SabiniwmState>,
         space: &smithay::desktop::Space<Window>,
+        timing: Timing,
         event: &InputEvent<I>,
     ) -> bool
     where
@@ -294,8 +315,21 @@ impl FocusUpdateDecider {
             (pos.x.floor() + 0.5, pos.y.floor() + 0.5).into()
         }
 
-        match event {
-            InputEvent::PointerMotion { .. } | InputEvent::PointerMotionAbsolute { .. } => {
+        match (timing, event) {
+            (Timing::BeforeProcessEvent, InputEvent::PointerButton { event }) => {
+                let pointer = seat.get_pointer().unwrap();
+                let button_state = event.state();
+
+                !pointer.is_grabbed() && button_state == ButtonState::Pressed
+            }
+            (
+                Timing::AfterProcessEvent,
+                InputEvent::PointerMotion { .. } | InputEvent::PointerMotionAbsolute { .. },
+            ) => {
+                if !config_delegate.focus_follows_mouse() {
+                    return false;
+                }
+
                 // Requirements:
                 //
                 // - Focus should be updated when mouse enters to another window.
@@ -315,13 +349,6 @@ impl FocusUpdateDecider {
                     self.last_pos = center_of_pixel(pos);
                 }
                 ret
-            }
-            InputEvent::PointerButton { event } => {
-                let pointer = seat.get_pointer().unwrap();
-
-                let button_state = event.state();
-
-                !pointer.is_grabbed() && button_state == ButtonState::Pressed
             }
             _ => false,
         }

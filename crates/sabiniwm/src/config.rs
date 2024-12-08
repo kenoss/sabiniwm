@@ -12,6 +12,10 @@ pub trait ConfigDelegateUnstableI {
         unstable_default::get_xkb_config()
     }
 
+    fn focus_follows_mouse(&self) -> bool {
+        true
+    }
+
     fn make_layout_tree_builder(&self) -> sabiniwm::view::layout_node::LayoutTreeBuilder {
         unstable_default::make_layout_tree_builder()
     }
