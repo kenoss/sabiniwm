@@ -1,5 +1,6 @@
 use crate::action::Action;
 use crate::backend::{Backend, BackendI};
+use crate::config::{ConfigDelegate, ConfigDelegateUnstableI};
 use crate::cursor::Cursor;
 use crate::envvar::EnvVar;
 use crate::input::{KeySeq, Keymap};
@@ -111,6 +112,8 @@ pub(crate) struct InnerState {
     pub keyseq: KeySeq,
     pub view: View,
     pub focus_update_decider: FocusUpdateDecider,
+
+    pub config_delegate: ConfigDelegate,
 }
 
 pub(crate) struct SabiniwmStateWithConcreteBackend<'a, B>
@@ -122,12 +125,18 @@ where
 }
 
 impl SabiniwmState {
-    pub fn run(workspace_tags: Vec<WorkspaceTag>, keymap: Keymap<Action>) -> eyre::Result<()> {
+    pub fn run(
+        config_delegate: Box<dyn ConfigDelegateUnstableI>,
+        workspace_tags: Vec<WorkspaceTag>,
+        keymap: Keymap<Action>,
+    ) -> eyre::Result<()> {
         use crate::backend::udev::UdevBackend;
         #[cfg(feature = "winit")]
         use crate::backend::winit::WinitBackend;
 
         let envvar = EnvVar::load()?;
+
+        let config_delegate = ConfigDelegate::new(config_delegate);
 
         let event_loop = EventLoop::try_new().unwrap();
 
@@ -147,6 +156,7 @@ impl SabiniwmState {
         };
 
         let mut this = Self::new(
+            config_delegate,
             envvar,
             workspace_tags,
             keymap,
@@ -163,6 +173,7 @@ impl SabiniwmState {
     }
 
     fn new(
+        config_delegate: ConfigDelegate,
         envvar: EnvVar,
         workspace_tags: Vec<WorkspaceTag>,
         keymap: Keymap<Action>,
@@ -335,6 +346,8 @@ impl SabiniwmState {
                 keyseq: KeySeq::new(),
                 view,
                 focus_update_decider: FocusUpdateDecider::new(),
+
+                config_delegate,
             },
         })
     }

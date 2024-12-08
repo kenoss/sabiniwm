@@ -8,6 +8,7 @@ extern crate maplit;
 use big_s::S;
 use itertools::Itertools;
 use sabiniwm::action::{self, Action, ActionFnI};
+use sabiniwm::config::ConfigDelegateUnstableDefault;
 use sabiniwm::input::{KeySeqSerde, Keymap, ModMask};
 use sabiniwm::view::predefined::{LayoutMessageSelect, LayoutMessageToggle};
 use sabiniwm::view::stackset::WorkspaceTag;
@@ -154,7 +155,9 @@ fn main() -> eyre::Result<()> {
     }));
     let keymap = Keymap::new(keymap);
 
-    SabiniwmState::run(workspace_tags, keymap)?;
+    let config_delegate = Box::new(ConfigDelegateUnstableDefault);
+
+    SabiniwmState::run(config_delegate, workspace_tags, keymap)?;
 
     Ok(())
 }

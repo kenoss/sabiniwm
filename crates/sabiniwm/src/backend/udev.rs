@@ -1,4 +1,5 @@
 use crate::backend::BackendI;
+use crate::config::ConfigDelegateUnstableI;
 use crate::envvar::EnvVar;
 use crate::pointer::{PointerElement, CLEAR_COLOR};
 use crate::render::{output_elements, CustomRenderElement};
@@ -43,13 +44,13 @@ use smithay::desktop::space::{Space, SurfaceTree};
 use smithay::desktop::utils::OutputPresentationFeedback;
 use smithay::input::pointer::{CursorImageAttributes, CursorImageStatus};
 use smithay::reexports::calloop::{LoopHandle, RegistrationToken};
-use smithay::reexports::drm::control::{connector, crtc, Device, ModeTypeFlags};
+use smithay::reexports::drm::control::{connector, crtc, Device};
 use smithay::reexports::drm::Device as _;
+use smithay::reexports::input as libinput;
 use smithay::reexports::rustix::fs::OFlags;
 use smithay::reexports::wayland_protocols::wp::linux_dmabuf::zv1::server::zwp_linux_dmabuf_feedback_v1;
 use smithay::reexports::wayland_protocols::wp::presentation_time::server::wp_presentation_feedback;
 use smithay::reexports::wayland_server::protocol::wl_output::WlOutput;
-use smithay::reexports::{drm, input as libinput};
 use smithay::utils::{
     Clock, DeviceFd, IsAlive, Logical, Monotonic, Physical, Point, Rectangle, Scale, Transform,
 };
@@ -859,27 +860,10 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
                 });
                 let position = (x, 0).into();
 
-                for (i, mode) in connector.modes().iter().enumerate() {
-                    let dpi = calc_estimated_dpi(&connector, mode);
-                    info!(
-                        "connector.modes()[{}] = {:?}, estimated DPI = {:?}",
-                        i, mode, dpi
-                    );
-                }
-
-                let mode = *connector
-                    .modes()
-                    .iter()
-                    .find(|mode| mode.mode_type().contains(ModeTypeFlags::PREFERRED))
-                    .unwrap_or(&connector.modes()[0]);
-                let scale = calc_output_scale(&connector, &mode);
-                info!(
-                    "selected: mode = {:?}, scale = {:?}, estimated_dpi = {:?}, corrected_dpi = {:?}",
-                    mode,
-                    scale,
-                    calc_estimated_dpi(&connector, &mode),
-                    calc_estimated_dpi(&connector, &mode).map(|x| x / scale.fractional_scale())
-                );
+                let (mode, scale) = self
+                    .inner
+                    .config_delegate
+                    .select_mode_and_scale_on_connecter_added(&connector);
                 output.set_preferred(mode.into());
                 output.change_current_state(Some(mode.into()), None, Some(scale), Some(position));
                 self.inner.space.map_output(&output, position);
@@ -1368,43 +1352,6 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
                 SwapBuffersError::ContextLost(err) => panic!("Rendering loop lost: {}", err),
             }
         }
-    }
-}
-
-fn calc_estimated_dpi(connector: &connector::Info, mode: &drm::control::Mode) -> Option<f64> {
-    let phys_size = connector.size();
-    phys_size.map(|phys_size| {
-        let mode_size = mode.size();
-        let dpi_w = mode_size.0 as f64 / (phys_size.0 as f64 / 25.4);
-        let dpi_h = mode_size.1 as f64 / (phys_size.1 as f64 / 25.4);
-        dpi_w.max(dpi_h)
-    })
-}
-
-// TODO: Config
-fn calc_output_scale(
-    connector: &connector::Info,
-    mode: &drm::control::Mode,
-) -> smithay::output::Scale {
-    const TARGET_DPI: f64 = 140.0;
-
-    let Some(dpi) = calc_estimated_dpi(connector, mode) else {
-        return smithay::output::Scale::Integer(1);
-    };
-
-    // If it's not HiDPI display, don't use scale.
-    if dpi <= TARGET_DPI {
-        return smithay::output::Scale::Integer(1);
-    }
-
-    let logical_from_actual = TARGET_DPI / dpi;
-    // Find an approximate value that makes the logical output size an integer.
-    // Note that many display sizes are divisible by 8.
-    let logical_from_actual = (1.0 / 8.0) * (8.0 * logical_from_actual).round();
-    let actual_from_logical = 1.0 / logical_from_actual;
-    smithay::output::Scale::Custom {
-        advertised_integer: 1,
-        fractional: actual_from_logical,
     }
 }
 

@@ -12,6 +12,7 @@ extern crate maplit;
 
 pub mod action;
 pub mod backend;
+pub mod config;
 pub mod cursor;
 mod envvar;
 mod external_trait_def;
