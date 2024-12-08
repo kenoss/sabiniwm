@@ -134,9 +134,37 @@ impl SabiniwmState {
             InputEvent::PointerButton { event } => {
                 let pointer = self.inner.seat.get_pointer().unwrap();
 
+                // Update pointer focus.
+                //
+                // Consider the case that `PointerButton` event is emitted just after workspace focus is changed and a workspace
+                // is shown.
+                //
+                // - A window A was under the pointer in the previous workspace and a window B is under the pointer in the current.
+                // - A window A was under the pointer in the previous workspace and no window is under the pointer in the current.
+                // - No window was under the pointer in the previous workspace and a window B is under the pointer in the current.
+                // - No window was under the pointer in the previous workspace and no window is under the pointer in the current.
+                //
+                // In each case, the event will be derivered to the A/none instead of B/none if we don't update focus here.
+                //
+                // To prevent this, we call `PointerHandle::motion()` to update focus. In the above case, it changes
+                // `smithay::input::pointer::PointerInnerHandle::focus` and calls `crate::PointerFocusTarget::replace()`.
+                //
+                // It is legitimate to unconditionally calls it (i.e. in the other case): pointer related events should be
+                // derivered to a target that is under the pointer at the event timing.
+                let pos = pointer.current_location();
+                let under = self.surface_under(pos);
+                pointer.motion(
+                    self,
+                    under,
+                    &MotionEvent {
+                        serial,
+                        time: event.time_msec(),
+                        location: pos,
+                    },
+                );
+
                 let button = event.button_code();
                 let button_state = event.state();
-
                 pointer.button(
                     self,
                     &ButtonEvent {
