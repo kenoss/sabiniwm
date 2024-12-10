@@ -6,7 +6,6 @@ use crate::envvar::EnvVar;
 use crate::input::{KeySeq, Keymap};
 use crate::input_event::FocusUpdateDecider;
 use crate::util::EventHandler;
-use crate::view::stackset::WorkspaceTag;
 use crate::view::view::View;
 use crate::view::window::Window;
 use eyre::WrapErr;
@@ -125,11 +124,7 @@ where
 }
 
 impl SabiniwmState {
-    pub fn run(
-        config_delegate: Box<dyn ConfigDelegateUnstableI>,
-        workspace_tags: Vec<WorkspaceTag>,
-        keymap: Keymap<Action>,
-    ) -> eyre::Result<()> {
+    pub fn run(config_delegate: Box<dyn ConfigDelegateUnstableI>) -> eyre::Result<()> {
         use crate::backend::udev::UdevBackend;
         #[cfg(feature = "winit")]
         use crate::backend::winit::WinitBackend;
@@ -158,8 +153,6 @@ impl SabiniwmState {
         let mut this = Self::new(
             config_delegate,
             envvar,
-            workspace_tags,
-            keymap,
             event_loop.handle(),
             event_loop.get_signal(),
             backend,
@@ -175,8 +168,6 @@ impl SabiniwmState {
     fn new(
         config_delegate: ConfigDelegate,
         envvar: EnvVar,
-        workspace_tags: Vec<WorkspaceTag>,
-        keymap: Keymap<Action>,
         loop_handle: LoopHandle<'static, SabiniwmState>,
         loop_signal: LoopSignal,
         backend: Backend,
@@ -303,8 +294,10 @@ impl SabiniwmState {
             xwayland
         };
 
+        let keymap = config_delegate.make_keymap(backend.is_udev());
+
         let rect = Rectangle::from_loc_and_size((0, 0), (1280, 720));
-        let view = View::new(&config_delegate, rect, workspace_tags);
+        let view = View::new(&config_delegate, rect);
 
         Ok(SabiniwmState {
             backend,

@@ -20,6 +20,37 @@ pub trait ConfigDelegateUnstableI {
         unstable_default::make_layout_tree_builder()
     }
 
+    fn make_workspace_tags(&self) -> Vec<sabiniwm::view::stackset::WorkspaceTag> {
+        use sabiniwm::view::stackset::WorkspaceTag;
+
+        (0..=9).map(|i| WorkspaceTag(format!("{}", i))).collect()
+    }
+
+    fn make_keymap(
+        &self,
+        _is_udev_backend: bool,
+    ) -> sabiniwm::input::Keymap<sabiniwm::action::Action> {
+        use big_s::S;
+        use sabiniwm::action::{self, Action, ActionFnI};
+        use sabiniwm::input::{KeySeqSerde, Keymap, ModMask};
+
+        let meta_keys = hashmap! {
+            S("C") => ModMask::CONTROL,
+            S("M") => ModMask::MOD1,
+            S("s") => ModMask::MOD4,
+            S("H") => ModMask::MOD5,
+        };
+        let keyseq_serde = KeySeqSerde::new(meta_keys);
+        let kbd = |s| keyseq_serde.kbd(s).unwrap();
+        let keymap = hashmap! {
+            kbd("C-x C-q") => action::ActionQuitSabiniwm.into_action(),
+
+            kbd("C-x C-t") => Action::spawn("alacritty"),
+        };
+
+        Keymap::new(keymap)
+    }
+
     fn select_mode_and_scale_on_connecter_added(
         &self,
         connector_info: &drm::control::connector::Info,

@@ -89,4 +89,12 @@ impl Backend {
             Self::Winit(backend) => backend,
         }
     }
+
+    pub(crate) fn is_udev(&self) -> bool {
+        match self {
+            Self::Udev(_) => true,
+            #[cfg(feature = "winit")]
+            Self::Winit(_) => false,
+        }
+    }
 }

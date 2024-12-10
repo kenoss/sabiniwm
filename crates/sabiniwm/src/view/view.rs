@@ -2,7 +2,7 @@ use crate::config::{ConfigDelegate, ConfigDelegateUnstableI};
 use crate::util::{FocusedVec, Id};
 use crate::view::api::{ViewHandleMessageApi, ViewLayoutApi};
 use crate::view::layout_node::LayoutMessage;
-use crate::view::stackset::{StackSet, WorkspaceTag};
+use crate::view::stackset::StackSet;
 use crate::view::window::{Window, WindowProps};
 use itertools::Itertools;
 use smithay::utils::{Logical, Rectangle, Size};
@@ -22,11 +22,8 @@ pub(super) struct ViewState {
 }
 
 impl View {
-    pub fn new(
-        config_delegate: &ConfigDelegate,
-        rect: Rectangle<i32, Logical>,
-        workspace_tags: Vec<WorkspaceTag>,
-    ) -> Self {
+    pub fn new(config_delegate: &ConfigDelegate, rect: Rectangle<i32, Logical>) -> Self {
+        let workspace_tags = config_delegate.make_workspace_tags();
         let layout_tree_builder = config_delegate.make_layout_tree_builder();
         let stackset = StackSet::new(workspace_tags, layout_tree_builder);
 
