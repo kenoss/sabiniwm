@@ -244,7 +244,6 @@ impl SabiniwmState {
         }
     }
 
-    #[allow(unused_variables)]
     fn update_focus(&mut self, serial: Serial, pos: Point<f64, Logical>) {
         let Some(window) = self.inner.space.element_under(pos).map(|(w, _)| w).cloned() else {
             return;
@@ -289,7 +288,6 @@ enum Timing {
     AfterProcessEvent,
 }
 
-#[allow(dead_code)]
 impl FocusUpdateDecider {
     const DISTANCE_THRESHOLD: f64 = 16.0;
 

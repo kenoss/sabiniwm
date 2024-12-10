@@ -43,12 +43,6 @@ impl View {
         &self.state.stackset
     }
 
-    // TODO: Remove?
-    #[allow(unused)]
-    pub fn window(&self, window_id: Id<Window>) -> Option<&Window> {
-        self.state.windows.get(&window_id)
-    }
-
     // Returns true iff self is changed.
     pub fn refresh(&mut self, space: &mut smithay::desktop::Space<Window>) -> bool {
         use smithay::utils::IsAlive;

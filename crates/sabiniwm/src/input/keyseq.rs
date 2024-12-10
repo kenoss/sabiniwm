@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use eyre::eyre;
 use itertools::Itertools;
 use smithay::input::keyboard::{KeysymHandle, XkbContextHandler};
