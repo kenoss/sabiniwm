@@ -95,7 +95,8 @@ pub struct ConfigDelegateUnstableDefault;
 impl ConfigDelegateUnstableI for ConfigDelegateUnstableDefault {}
 
 pub mod unstable_default {
-    use super::*;
+    use crate as sabiniwm;
+    use smithay::reexports::{drm, input as libinput};
 
     pub fn get_xkb_config() -> sabiniwm::config::XkbConfig<'static> {
         use sabiniwm::config::XkbConfig;
