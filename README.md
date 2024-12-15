@@ -49,6 +49,7 @@ kenoss@ is 80%-ish satisfied daily use of it on coop machine.
 - [ ] xrandr (Multiple outputs, external displays)
 - [ ] Notification
 - [ ] Screencast with Chrome
+- [ ] IME
 - [ ] etc.
 
 ## Comparison
