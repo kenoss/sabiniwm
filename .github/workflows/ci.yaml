@@ -30,6 +30,7 @@ jobs:
             libdrm-dev \
             libgbm-dev \
             libinput-dev \
+            libpixman-1-dev \
             libseat-dev \
             libsystemd-dev \
             libudev-dev \
@@ -62,6 +63,7 @@ jobs:
             libdrm-dev \
             libgbm-dev \
             libinput-dev \
+            libpixman-1-dev \
             libseat-dev \
             libsystemd-dev \
             libudev-dev \
@@ -88,6 +90,7 @@ jobs:
             libdrm-dev \
             libgbm-dev \
             libinput-dev \
+            libpixman-1-dev \
             libseat-dev \
             libsystemd-dev \
             libudev-dev \
