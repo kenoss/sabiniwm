@@ -313,5 +313,29 @@ pub(crate) mod smithay {
                 fn buffer_destroyed(&mut self, buffer: &wl_buffer::WlBuffer);
             }
         }
+
+        #[thin_delegate::external_trait_def(with_uses = true)]
+        pub(crate) mod seet {
+            use smithay::reexports::wayland_server::backend::ObjectId;
+            use smithay::reexports::wayland_server::protocol::wl_surface;
+
+            #[thin_delegate::register]
+            pub trait WaylandFocus {
+                /// Returns the underlying wl_surface, if any.
+                ///
+                /// *Note*: This has to return `Some`, if `same_client_as` can return true
+                /// for any provided `ObjectId`
+                fn wl_surface(&self) -> Option<wl_surface::WlSurface>;
+                /// Returns true, if the underlying wayland object originates from
+                /// the same client connection as the provided `ObjectId`.
+                ///
+                /// *Must* return false, if there is not underlying wayland object.
+                fn same_client_as(&self, object_id: &ObjectId) -> bool {
+                    self.wl_surface()
+                        .map(|s| s.id().same_client_as(object_id))
+                        .unwrap_or(false)
+                }
+            }
+        }
     }
 }
