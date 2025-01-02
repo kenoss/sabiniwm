@@ -31,7 +31,7 @@ pub(crate) enum Backend {
     Winit(winit::WinitBackend),
 }
 
-#[thin_delegate::derive_delegate(
+#[thin_delegate::fill_delegate(
     external_trait_def = crate::external_trait_def::smithay::wayland::buffer,
     scheme = |f| {
         match self {
@@ -43,7 +43,7 @@ pub(crate) enum Backend {
 )]
 impl smithay::wayland::buffer::BufferHandler for Backend {}
 
-#[thin_delegate::derive_delegate(
+#[thin_delegate::fill_delegate(
     scheme = |f| {
         match self {
             Self::Udev(backend) => f(backend),
@@ -54,7 +54,7 @@ impl smithay::wayland::buffer::BufferHandler for Backend {}
 )]
 impl DmabufHandlerDelegate for Backend {}
 
-#[thin_delegate::derive_delegate(
+#[thin_delegate::fill_delegate(
     scheme = |f| {
         match self {
             Self::Udev(backend) => f(backend),

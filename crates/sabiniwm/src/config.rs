@@ -75,7 +75,8 @@ pub(crate) struct ConfigDelegate {
     inner: Box<dyn ConfigDelegateUnstableI>,
 }
 
-#[thin_delegate::derive_delegate(
+#[thin_delegate::fill_delegate(
+    delegate_fn_with_default_impl = true,
     scheme = |f| {
         use std::ops::Deref;
 

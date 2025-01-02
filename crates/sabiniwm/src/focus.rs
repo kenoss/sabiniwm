@@ -11,10 +11,10 @@ pub enum KeyboardFocusTarget {
     Popup(smithay::desktop::PopupKind),
 }
 
-#[thin_delegate::derive_delegate(external_trait_def = crate::external_trait_def::smithay::utils)]
+#[thin_delegate::fill_delegate(external_trait_def = crate::external_trait_def::smithay::utils)]
 impl smithay::utils::IsAlive for KeyboardFocusTarget {}
 
-#[thin_delegate::derive_delegate(
+#[thin_delegate::fill_delegate(
     external_trait_def = crate::external_trait_def::smithay::input::keyboard,
     scheme = |f| {
         match self {
@@ -61,14 +61,14 @@ impl From<KeyboardFocusTarget> for PointerFocusTarget {
     }
 }
 
-#[thin_delegate::derive_delegate(external_trait_def = crate::external_trait_def::smithay::utils)]
+#[thin_delegate::fill_delegate(external_trait_def = crate::external_trait_def::smithay::utils)]
 impl smithay::utils::IsAlive for PointerFocusTarget {}
 
-#[thin_delegate::derive_delegate(external_trait_def = crate::external_trait_def::smithay::input::pointer)]
+#[thin_delegate::fill_delegate(external_trait_def = crate::external_trait_def::smithay::input::pointer)]
 impl smithay::input::pointer::PointerTarget<SabiniwmState> for PointerFocusTarget {}
 
-#[thin_delegate::derive_delegate(external_trait_def = crate::external_trait_def::smithay::input::touch)]
+#[thin_delegate::fill_delegate(external_trait_def = crate::external_trait_def::smithay::input::touch)]
 impl smithay::input::touch::TouchTarget<SabiniwmState> for PointerFocusTarget {}
 
-#[thin_delegate::derive_delegate(external_trait_def = crate::external_trait_def::smithay::wayland::seet)]
+#[thin_delegate::fill_delegate(external_trait_def = crate::external_trait_def::smithay::wayland::seet)]
 impl smithay::wayland::seat::WaylandFocus for PointerFocusTarget {}

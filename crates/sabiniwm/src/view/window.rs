@@ -334,7 +334,7 @@ mod window {
             Decoration(SolidColorRenderElement),
         }
 
-        #[thin_delegate::derive_delegate(external_trait_def = crate::external_trait_def::smithay::backend::renderer::element)]
+        #[thin_delegate::fill_delegate(external_trait_def = crate::external_trait_def::smithay::backend::renderer::element)]
         impl<R> smithay::backend::renderer::element::Element for WindowRenderElement<R>
         where
             R: smithay::backend::renderer::Renderer,
@@ -343,7 +343,7 @@ mod window {
         {
         }
 
-        #[thin_delegate::derive_delegate(external_trait_def = crate::external_trait_def::smithay::backend::renderer::element)]
+        #[thin_delegate::fill_delegate(external_trait_def = crate::external_trait_def::smithay::backend::renderer::element)]
         impl<R> smithay::backend::renderer::element::RenderElement<R> for WindowRenderElement<R>
         where
             R: smithay::backend::renderer::Renderer,
