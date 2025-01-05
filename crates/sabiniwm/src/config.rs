@@ -76,7 +76,6 @@ pub(crate) struct ConfigDelegate {
 }
 
 #[thin_delegate::fill_delegate(
-    delegate_fn_with_default_impl = true,
     scheme = |f| {
         use std::ops::Deref;
 

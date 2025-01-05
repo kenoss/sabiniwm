@@ -1765,9 +1765,9 @@ dependencies = [
 
 [[package]]
 name = "thin_delegate"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f24be7e3cca2f7ca8cdb5dad0d36bf40f4a7d57bfef35646088c510b27697484"
+checksum = "58bc910d9f8d4bfcc06287b7611c4eff73c55263530363310a8ed5bf64a723b1"
 dependencies = [
  "indoc",
  "itertools 0.13.0",
