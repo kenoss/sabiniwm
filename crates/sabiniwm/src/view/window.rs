@@ -104,18 +104,27 @@ mod window {
     use itertools::Itertools;
     use smithay::backend::renderer::element::solid::SolidColorBuffer;
     use smithay::desktop::space::SpaceElement;
-    use smithay::utils::{IsAlive, Logical, Physical, Point, Rectangle, Scale};
+    use smithay::utils::{IsAlive, Logical, Physical, Point, Rectangle, Scale, Size};
     use std::sync::{Arc, Mutex};
     use std::time::Duration;
 
     struct Ssd {
-        border: SolidColorBuffer,
+        // top, right, bottom, left
+        borders: [SolidColorBuffer; 4],
+        // Relative locations from top_left: top, right, bottom, left.
+        relative_locs: [Point<i32, Logical>; 4],
     }
 
     impl Ssd {
         fn new() -> Self {
             Self {
-                border: SolidColorBuffer::default(),
+                borders: [
+                    SolidColorBuffer::default(),
+                    SolidColorBuffer::default(),
+                    SolidColorBuffer::default(),
+                    SolidColorBuffer::default(),
+                ],
+                relative_locs: [(0, 0).into(); 4],
             }
         }
     }
@@ -302,17 +311,34 @@ mod window {
     impl WindowInner {
         fn update_ssd(&mut self, activated: bool) {
             let border = &self.props.border.clone();
-            let mut size = self.props.geometry.size;
             if let Some(ref mut ssd) = &mut self.ssd {
-                size.w += (border.dim.left + border.dim.right) as i32;
-                size.h += (border.dim.top + border.dim.bottom) as i32;
+                let bbox: Size<i32, Logical> = (
+                    self.props.geometry.size.w + (border.dim.left + border.dim.right) as i32,
+                    self.props.geometry.size.h + (border.dim.top + border.dim.bottom) as i32,
+                )
+                    .into();
                 let rgba = if activated {
                     &border.active_rgba
                 } else {
                     &border.inactive_rgba
                 };
                 let color = rgba.to_f32_array();
-                ssd.border.update(size, color);
+
+                let size_top: Size<i32, Logical> = (bbox.w, border.dim.top as i32).into();
+                ssd.borders[0].update(size_top, color);
+                ssd.relative_locs[0] = (0, 0).into();
+
+                let size_right: Size<i32, Logical> = (border.dim.right as i32, bbox.h).into();
+                ssd.borders[1].update(size_right, color);
+                ssd.relative_locs[1] = (bbox.w - border.dim.right as i32, 0).into();
+
+                let size_bottom: Size<i32, Logical> = (bbox.w, border.dim.bottom as i32).into();
+                ssd.borders[2].update(size_bottom, color);
+                ssd.relative_locs[2] = (0, bbox.h - border.dim.bottom as i32).into();
+
+                let size_left: Size<i32, Logical> = (border.dim.left as i32, bbox.h).into();
+                ssd.borders[3].update(size_left, color);
+                ssd.relative_locs[3] = (0, 0).into();
             }
         }
     }
@@ -382,21 +408,27 @@ mod window {
 
                 let inner = self.inner.lock().unwrap();
                 if let Some(ssd) = &inner.ssd {
-                    let mut location = location;
+                    let mut left_top = location;
                     let border = &inner.props.border;
-                    location.x -= border.dim.left as i32;
-                    location.y -= border.dim.top as i32;
+                    left_top.x -= border.dim.left as i32;
+                    left_top.y -= border.dim.top as i32;
 
-                    ret.push(
-                        WindowRenderElement::Decoration(SolidColorRenderElement::from_buffer(
-                            &ssd.border,
-                            location,
-                            scale,
-                            alpha,
-                            smithay::backend::renderer::element::Kind::Unspecified,
-                        ))
-                        .into(),
-                    )
+                    for i in 0..4 {
+                        let rloc = &ssd.relative_locs[i];
+                        let rloc: Point<f64, Logical> = (rloc.x as f64, rloc.y as f64).into();
+                        let loc = left_top + rloc.to_physical_precise_round(scale);
+
+                        ret.push(
+                            WindowRenderElement::Decoration(SolidColorRenderElement::from_buffer(
+                                &ssd.borders[i],
+                                loc,
+                                scale,
+                                alpha,
+                                smithay::backend::renderer::element::Kind::Unspecified,
+                            ))
+                            .into(),
+                        )
+                    }
                 }
 
                 ret
