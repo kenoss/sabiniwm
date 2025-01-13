@@ -1387,7 +1387,7 @@ where
     let output_geometry = space.output_geometry(output).unwrap();
     let scale = Scale::from(output.current_scale().fractional_scale());
 
-    let mut custom_elements: Vec<CustomRenderElement<_>> = Vec::new();
+    let mut elements: Vec<CustomRenderElement<_>> = Vec::new();
 
     if output_geometry.to_f64().contains(pointer_location) {
         let cursor_hotspot = if let CursorImageStatus::Surface(ref surface) = cursor_status {
@@ -1423,18 +1423,13 @@ where
             pointer_element.set_status(cursor_status.clone());
         }
 
-        custom_elements.extend(pointer_element.render_elements(
-            renderer,
-            cursor_pos_scaled,
-            scale,
-            1.0,
-        ));
+        elements.extend(pointer_element.render_elements(renderer, cursor_pos_scaled, scale, 1.0));
 
         // draw the dnd icon if applicable
         {
             if let Some(wl_surface) = dnd_icon.as_ref() {
                 if wl_surface.alive() {
-                    custom_elements.extend(AsRenderElements::<R>::render_elements(
+                    elements.extend(AsRenderElements::<R>::render_elements(
                         &SurfaceTree::from_surface(wl_surface),
                         renderer,
                         cursor_pos_scaled,
@@ -1446,7 +1441,7 @@ where
         }
     }
 
-    custom_elements
+    elements
 }
 
 fn render_surface<R>(
