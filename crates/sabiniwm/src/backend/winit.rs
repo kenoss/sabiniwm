@@ -1,6 +1,6 @@
 use crate::backend::BackendI;
 use crate::pointer::PointerElement;
-use crate::render::{render_output, CustomRenderElement};
+use crate::render::{output_elements, CustomRenderElement};
 use crate::render_loop::RenderLoop;
 use crate::state::{
     post_repaint, take_presentation_feedback, InnerState, SabiniwmState,
@@ -9,7 +9,7 @@ use crate::state::{
 use crate::util::EventHandler;
 use eyre::WrapErr;
 use smithay::backend::egl::EGLDevice;
-use smithay::backend::renderer::damage::{Error as OutputDamageTrackerError, OutputDamageTracker};
+use smithay::backend::renderer::damage::OutputDamageTracker;
 use smithay::backend::renderer::element::AsRenderElements;
 use smithay::backend::renderer::gles::GlesRenderer;
 #[cfg(feature = "egl")]
@@ -315,18 +315,14 @@ impl SabiniwmStateWithConcreteBackend<'_, WinitBackend> {
                 }
             }
 
-            render_output(
-                renderer,
-                &self.backend.output,
-                space,
-                elements,
-                damage_tracker,
-                age,
-            )
-            .map_err(|err| match err {
-                OutputDamageTrackerError::Rendering(err) => err.into(),
-                _ => unreachable!(),
-            })
+            let (elements, clear_color) =
+                output_elements(renderer, &self.backend.output, space, elements);
+            // TODO: Integrate it with the below `match`.
+            match damage_tracker.render_output(renderer, age, &elements, clear_color) {
+                Ok(x) => Ok(x),
+                Err(smithay::backend::renderer::damage::Error::Rendering(e)) => Err(e.into()),
+                Err(_) => unreachable!(),
+            }
         });
 
         match render_res {

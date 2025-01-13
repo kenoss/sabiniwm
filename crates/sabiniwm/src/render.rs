@@ -1,8 +1,5 @@
 use crate::pointer::{PointerRenderElement, CLEAR_COLOR};
 use crate::view::window::WindowRenderElement;
-use smithay::backend::renderer::damage::{
-    Error as OutputDamageTrackerError, OutputDamageTracker, RenderOutputResult,
-};
 use smithay::backend::renderer::element::surface::WaylandSurfaceRenderElement;
 use smithay::backend::renderer::element::{RenderElement, Wrap};
 use smithay::backend::renderer::{ImportAll, ImportMem, Renderer};
@@ -121,21 +118,4 @@ where
     output_render_elements.extend(space_elements.into_iter().map(OutputRenderElement::Space));
 
     (output_render_elements, CLEAR_COLOR)
-}
-
-#[allow(clippy::too_many_arguments)]
-pub fn render_output<R>(
-    renderer: &mut R,
-    output: &Output,
-    space: &Space<crate::view::window::Window>,
-    custom_elements: Vec<CustomRenderElement<R>>,
-    damage_tracker: &mut OutputDamageTracker,
-    age: usize,
-) -> Result<RenderOutputResult, OutputDamageTrackerError<R>>
-where
-    R: Renderer + ImportAll + ImportMem,
-    R::TextureId: Clone + 'static,
-{
-    let (elements, clear_color) = output_elements(renderer, output, space, custom_elements);
-    damage_tracker.render_output(renderer, age, &elements, clear_color)
 }
