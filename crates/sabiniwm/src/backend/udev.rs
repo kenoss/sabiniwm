@@ -2,13 +2,14 @@ use crate::backend::BackendI;
 use crate::config::ConfigDelegateUnstableI;
 use crate::envvar::EnvVar;
 use crate::pointer::{PointerElement, CLEAR_COLOR};
-use crate::render::{output_elements, CustomRenderElement};
+use crate::render::{output_elements, CustomRenderElement, OutputRenderElement};
 use crate::render_loop::RenderLoop;
 use crate::state::{
     post_repaint, take_presentation_feedback, InnerState, SabiniwmState,
     SabiniwmStateWithConcreteBackend, SurfaceDmabufFeedback,
 };
 use crate::util::EventHandler;
+use crate::view::window::WindowRenderElement;
 use crate::wl_global::WlGlobal;
 use eyre::WrapErr;
 use smithay::backend::allocator::dmabuf::Dmabuf;
@@ -33,7 +34,7 @@ use smithay::backend::renderer::sync::SyncPoint;
 #[cfg(feature = "egl")]
 use smithay::backend::renderer::ImportEgl;
 use smithay::backend::renderer::{
-    Bind, DebugFlags, ExportMem, ImportDma, ImportMemWl, Offscreen, Renderer,
+    Bind, DebugFlags, ExportMem, ImportAll, ImportDma, ImportMem, ImportMemWl, Offscreen, Renderer,
 };
 use smithay::backend::session::libseat::{self, LibSeatSession};
 use smithay::backend::session::{Event as SessionEvent, Session};
@@ -1267,8 +1268,7 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
             return;
         };
 
-        let result = render_surface(
-            surface,
+        let additional_elements = make_additional_elements(
             &mut renderer,
             &self.inner.space,
             &output,
@@ -1277,7 +1277,21 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
             &mut self.backend.pointer_element,
             &self.inner.dnd_icon,
             &mut self.inner.cursor_status.lock().unwrap(),
+        );
+        let (elements, clear_color) = output_elements(
+            &mut renderer,
+            &output,
+            &self.inner.space,
+            additional_elements,
+        );
+        let result = render_surface(
+            surface,
+            &mut renderer,
+            &self.inner.space,
+            &output,
             &self.inner.clock,
+            elements,
+            clear_color,
         );
         let should_reschedule_render = match &result {
             Ok(has_rendered) => !has_rendered,
@@ -1356,9 +1370,8 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn render_surface<'a>(
-    surface: &'a mut SurfaceData,
-    renderer: &mut UdevRenderer<'a>,
+fn make_additional_elements<R>(
+    renderer: &mut R,
     space: &Space<crate::view::window::Window>,
     output: &smithay::output::Output,
     pointer_location: Point<f64, Logical>,
@@ -1366,8 +1379,11 @@ fn render_surface<'a>(
     pointer_element: &mut PointerElement,
     dnd_icon: &Option<wayland_server::protocol::wl_surface::WlSurface>,
     cursor_status: &mut CursorImageStatus,
-    clock: &Clock<Monotonic>,
-) -> Result<bool, SwapBuffersError> {
+) -> Vec<CustomRenderElement<R>>
+where
+    R: Renderer + ImportAll + ImportMem,
+    R::TextureId: Clone + 'static,
+{
     let output_geometry = space.output_geometry(output).unwrap();
     let scale = Scale::from(output.current_scale().fractional_scale());
 
@@ -1418,7 +1434,7 @@ fn render_surface<'a>(
         {
             if let Some(wl_surface) = dnd_icon.as_ref() {
                 if wl_surface.alive() {
-                    custom_elements.extend(AsRenderElements::<UdevRenderer<'a>>::render_elements(
+                    custom_elements.extend(AsRenderElements::<R>::render_elements(
                         &SurfaceTree::from_surface(wl_surface),
                         renderer,
                         cursor_pos_scaled,
@@ -1430,7 +1446,24 @@ fn render_surface<'a>(
         }
     }
 
-    let (elements, clear_color) = output_elements(renderer, output, space, custom_elements);
+    custom_elements
+}
+
+fn render_surface<R>(
+    surface: &mut SurfaceData,
+    renderer: &mut R,
+    space: &Space<crate::view::window::Window>,
+    output: &smithay::output::Output,
+    clock: &Clock<Monotonic>,
+    elements: Vec<OutputRenderElement<R, WindowRenderElement<R>>>,
+    clear_color: [f32; 4],
+) -> Result<bool, SwapBuffersError>
+where
+    R: Renderer + ImportAll + ImportMem,
+    R::TextureId: Clone + 'static,
+    R: ExportMem + Offscreen<GlesTexture> + smithay::backend::renderer::Bind<Dmabuf>,
+    <R as Renderer>::Error: Into<smithay::backend::SwapBuffersError>,
+{
     let res =
         surface
             .compositor
