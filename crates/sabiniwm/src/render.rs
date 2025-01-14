@@ -98,7 +98,7 @@ pub fn output_elements<R>(
     renderer: &mut R,
     output: &Output,
     space: &Space<crate::view::window::Window>,
-    custom_elements: Vec<CustomRenderElement<R>>,
+    additional_elements: Vec<CustomRenderElement<R>>,
 ) -> (
     Vec<OutputRenderElement<R, WindowRenderElement<R>>>,
     [f32; 4],
@@ -107,7 +107,7 @@ where
     R: Renderer + ImportAll + ImportMem,
     R::TextureId: Clone + 'static,
 {
-    let mut output_render_elements = custom_elements
+    let mut elements = additional_elements
         .into_iter()
         .map(OutputRenderElement::from)
         .collect::<Vec<_>>();
@@ -115,7 +115,7 @@ where
     let space_elements =
         smithay::desktop::space::space_render_elements(renderer, [space], output, 1.0)
             .expect("output without mode?");
-    output_render_elements.extend(space_elements.into_iter().map(OutputRenderElement::Space));
+    elements.extend(space_elements.into_iter().map(OutputRenderElement::Space));
 
-    (output_render_elements, CLEAR_COLOR)
+    (elements, CLEAR_COLOR)
 }
