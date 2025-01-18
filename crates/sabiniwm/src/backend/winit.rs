@@ -75,6 +75,7 @@ impl WinitBackend {
             Some((0, 0).into()),
         );
         output.set_preferred(mode);
+        // `InnerState::on_output_added()` will be called later, at the head of `init()`, as it requires `InnerState`.
 
         let mut render_loop = RenderLoop::new(loop_handle.clone(), &output, move |state| {
             state.as_winit_mut().render();
@@ -119,6 +120,8 @@ impl crate::backend::DmabufHandlerDelegate for WinitBackend {
 
 impl BackendI for WinitBackend {
     fn init(&mut self, inner: &mut InnerState) -> eyre::Result<()> {
+        inner.on_output_added(&self.output);
+
         #[cfg(feature = "egl")]
         if self
             .backend
@@ -262,7 +265,6 @@ impl SabiniwmStateWithConcreteBackend<'_, WinitBackend> {
 
         let full_redraw = &mut self.backend.full_redraw;
         *full_redraw = full_redraw.saturating_sub(1);
-        let space = &mut self.inner.space;
         let damage_tracker = &mut self.backend.damage_tracker;
 
         let dnd_icon = self.inner.dnd_icon.as_ref();
@@ -316,7 +318,7 @@ impl SabiniwmStateWithConcreteBackend<'_, WinitBackend> {
             }
 
             let (elements, clear_color) =
-                output_elements(renderer, &self.backend.output, space, elements);
+                output_elements(self.inner, renderer, &self.backend.output, elements);
             // TODO: Integrate it with the below `match`.
             match damage_tracker.render_output(renderer, age, &elements, clear_color) {
                 Ok(x) => Ok(x),
@@ -342,17 +344,17 @@ impl SabiniwmStateWithConcreteBackend<'_, WinitBackend> {
                 // Send frame events so that client start drawing their next frame
                 let time = self.inner.clock.now();
                 post_repaint(
+                    self.inner,
                     &self.backend.output,
                     &render_output_result.states,
-                    &self.inner.space,
                     None,
                     time.into(),
                 );
 
                 if has_rendered {
                     let mut output_presentation_feedback = take_presentation_feedback(
+                        self.inner,
                         &self.backend.output,
-                        &self.inner.space,
                         &render_output_result.states,
                     );
                     output_presentation_feedback.presented(

@@ -17,7 +17,7 @@ impl XdgShellHandler for SabiniwmState {
         let window_id = self.inner.view.register_window(window);
         self.inner.view.layout(&mut self.inner.space);
         self.inner.view.set_focus(window_id);
-        self.reflect_focus_from_stackset(None);
+        self.reflect_focus_from_stackset();
     }
 
     fn new_popup(&mut self, surface: PopupSurface, _positioner: PositionerState) {

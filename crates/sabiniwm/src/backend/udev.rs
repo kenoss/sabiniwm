@@ -52,9 +52,7 @@ use smithay::reexports::rustix::fs::OFlags;
 use smithay::reexports::wayland_protocols::wp::linux_dmabuf::zv1::server::zwp_linux_dmabuf_feedback_v1;
 use smithay::reexports::wayland_protocols::wp::presentation_time::server::wp_presentation_feedback;
 use smithay::reexports::wayland_server::protocol::wl_output::WlOutput;
-use smithay::utils::{
-    Clock, DeviceFd, IsAlive, Logical, Monotonic, Physical, Point, Rectangle, Scale, Transform,
-};
+use smithay::utils::{DeviceFd, IsAlive, Logical, Physical, Point, Rectangle, Scale, Transform};
 use smithay::wayland::compositor;
 use smithay::wayland::dmabuf::{DmabufFeedback, DmabufFeedbackBuilder, DmabufGlobal, DmabufState};
 use smithay::wayland::drm_lease::{
@@ -872,6 +870,7 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
                     .unwrap(/* Space::map_output() and Output::change_current_state() is called. */)
                     .size;
                 self.inner.view.resize_output(size, &mut self.inner.space);
+                self.inner.on_output_added(&output);
 
                 output.user_data().insert_if_missing(|| UdevOutputId {
                     primary_node: node,
@@ -1278,18 +1277,13 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
             &self.inner.dnd_icon,
             &mut self.inner.cursor_status.lock().unwrap(),
         );
-        let (elements, clear_color) = output_elements(
-            &mut renderer,
-            &output,
-            &self.inner.space,
-            additional_elements,
-        );
+        let (elements, clear_color) =
+            output_elements(self.inner, &mut renderer, &output, additional_elements);
         let result = render_surface(
+            self.inner,
             surface,
             &mut renderer,
-            &self.inner.space,
             &output,
-            &self.inner.clock,
             elements,
             clear_color,
         );
@@ -1445,11 +1439,11 @@ where
 }
 
 fn render_surface<R>(
+    // TODO: Make it a method.
+    this: &InnerState,
     surface: &mut SurfaceData,
     renderer: &mut R,
-    space: &Space<crate::view::window::Window>,
     output: &smithay::output::Output,
-    clock: &Clock<Monotonic>,
     elements: Vec<OutputRenderElement<R, WindowRenderElement<R>>>,
     clear_color: [f32; 4],
 ) -> Result<bool, SwapBuffersError>
@@ -1465,9 +1459,9 @@ where
             .render_frame::<_, _, GlesTexture>(renderer, &elements, clear_color)?;
 
     post_repaint(
+        this,
         output,
         &res.states,
-        space,
         surface
             .dmabuf_feedback
             .as_ref()
@@ -1475,11 +1469,11 @@ where
                 render_feedback: &feedback.render_feedback,
                 scanout_feedback: &feedback.scanout_feedback,
             }),
-        clock.now().into(),
+        this.clock.now().into(),
     );
 
     if res.rendered {
-        let output_presentation_feedback = take_presentation_feedback(output, space, &res.states);
+        let output_presentation_feedback = take_presentation_feedback(this, output, &res.states);
         surface
             .compositor
             .queue_frame(res.sync, res.damage, Some(output_presentation_feedback))

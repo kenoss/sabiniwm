@@ -9,6 +9,7 @@ pub enum KeyboardFocusTarget {
     Window(smithay::desktop::Window),
     LayerSurface(smithay::desktop::LayerSurface),
     Popup(smithay::desktop::PopupKind),
+    SessionLockSurface(WlSurface),
 }
 
 #[thin_delegate::fill_delegate(external_trait_def = crate::external_trait_def::smithay::utils)]
@@ -24,6 +25,7 @@ impl smithay::utils::IsAlive for KeyboardFocusTarget {}
             }
             Self::LayerSurface(l) => f(l.wl_surface()),
             Self::Popup(p) => f(p.wl_surface()),
+            Self::SessionLockSurface(x) => f(x),
         }
     }
 )]
@@ -35,6 +37,7 @@ impl smithay::wayland::seat::WaylandFocus for KeyboardFocusTarget {
             KeyboardFocusTarget::Window(w) => w.wl_surface(),
             KeyboardFocusTarget::LayerSurface(l) => Some(l.wl_surface().clone()),
             KeyboardFocusTarget::Popup(p) => Some(p.wl_surface().clone()),
+            KeyboardFocusTarget::SessionLockSurface(x) => Some(x.clone()),
         }
     }
 }
@@ -57,6 +60,7 @@ impl From<KeyboardFocusTarget> for PointerFocusTarget {
                 PointerFocusTarget::from(l.wl_surface().clone())
             }
             KeyboardFocusTarget::Popup(p) => PointerFocusTarget::from(p.wl_surface().clone()),
+            KeyboardFocusTarget::SessionLockSurface(x) => PointerFocusTarget::from(x),
         }
     }
 }

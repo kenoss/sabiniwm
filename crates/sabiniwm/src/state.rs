@@ -13,10 +13,6 @@ use smithay::backend::renderer::element::utils::select_dmabuf_feedback;
 use smithay::backend::renderer::element::{
     default_primary_scanout_output_compare, RenderElementStates,
 };
-use smithay::desktop::utils::{
-    surface_presentation_feedback_flags_from_states, surface_primary_scanout_output,
-    update_surface_primary_scanout_output, OutputPresentationFeedback,
-};
 use smithay::desktop::{PopupManager, Space};
 use smithay::input::pointer::{CursorImageStatus, PointerHandle};
 use smithay::input::{Seat, SeatState};
@@ -90,6 +86,7 @@ pub(crate) struct InnerState {
     pub xdg_activation_state: XdgActivationState,
     pub xdg_shell_state: XdgShellState,
     pub xdg_foreign_state: XdgForeignState,
+    pub session_lock_data: crate::session_lock::SessionLockData,
 
     pub dnd_icon: Option<wayland_server::protocol::wl_surface::WlSurface>,
 
@@ -230,6 +227,7 @@ impl SabiniwmState {
         let xdg_activation_state = XdgActivationState::new::<Self>(&display_handle);
         let xdg_shell_state = XdgShellState::new::<Self>(&display_handle);
         let xdg_foreign_state = XdgForeignState::new::<Self>(&display_handle);
+        let session_lock_data = crate::session_lock::SessionLockData::new(&display_handle);
         TextInputManagerState::new::<Self>(&display_handle);
         InputMethodManagerState::new::<Self, _>(&display_handle, |_client| true);
         VirtualKeyboardManagerState::new::<Self, _>(&display_handle, |_client| true);
@@ -318,6 +316,7 @@ impl SabiniwmState {
                 xdg_activation_state,
                 xdg_shell_state,
                 xdg_foreign_state,
+                session_lock_data,
                 dnd_icon: None,
                 cursor_status,
                 seat_name,
@@ -343,7 +342,7 @@ impl SabiniwmState {
         event_loop.run(None, self, |state| {
             let should_reflect = state.inner.view.refresh(&mut state.inner.space);
             if should_reflect {
-                state.reflect_focus_from_stackset(None);
+                state.reflect_focus_from_stackset();
             }
 
             state.inner.space.refresh();
@@ -355,6 +354,12 @@ impl SabiniwmState {
     }
 }
 
+impl InnerState {
+    pub fn on_output_added(&mut self, output: &smithay::output::Output) {
+        self.session_lock_data.on_output_added(output);
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 pub(crate) struct SurfaceDmabufFeedback<'a> {
     pub render_feedback: &'a DmabufFeedback,
@@ -362,15 +367,75 @@ pub(crate) struct SurfaceDmabufFeedback<'a> {
 }
 
 pub(crate) fn post_repaint(
+    // TODO: Make it a method.
+    this: &InnerState,
     output: &smithay::output::Output,
     render_element_states: &RenderElementStates,
-    space: &Space<crate::view::window::Window>,
     dmabuf_feedback: Option<SurfaceDmabufFeedback<'_>>,
     time: Duration,
 ) {
+    use smithay::desktop::utils::{
+        send_dmabuf_feedback_surface_tree, send_frames_surface_tree,
+        surface_primary_scanout_output, update_surface_primary_scanout_output,
+    };
+    use smithay::wayland::compositor::{with_surface_tree_downward, TraversalAction};
+
     let throttle = Some(Duration::from_secs(1));
 
-    for window in space.elements() {
+    use crate::session_lock::SessionLockState;
+    match this.session_lock_data.get_lock_surface(output) {
+        SessionLockState::NotLocked => {}
+        SessionLockState::Locked(output_assoc)
+        | SessionLockState::LockedButClientGone(output_assoc) => {
+            if let Some(lock_surface) = &output_assoc.lock_surface {
+                with_surface_tree_downward(
+                    lock_surface.wl_surface(),
+                    (),
+                    |_, _, _| TraversalAction::DoChildren(()),
+                    |surface, states, _| {
+                        let primary_scanout_output = update_surface_primary_scanout_output(
+                            surface,
+                            output,
+                            states,
+                            render_element_states,
+                            default_primary_scanout_output_compare,
+                        );
+                        if let Some(output) = primary_scanout_output {
+                            with_fractional_scale(states, |fraction_scale| {
+                                fraction_scale
+                                    .set_preferred_scale(output.current_scale().fractional_scale());
+                            });
+                        }
+                    },
+                    |_, _, _| true,
+                );
+                send_frames_surface_tree(
+                    lock_surface.wl_surface(),
+                    output,
+                    time,
+                    throttle,
+                    surface_primary_scanout_output,
+                );
+                if let Some(dmabuf_feedback) = dmabuf_feedback {
+                    send_dmabuf_feedback_surface_tree(
+                        lock_surface.wl_surface(),
+                        output,
+                        |_, _| Some(output.clone()),
+                        |surface, _| {
+                            select_dmabuf_feedback(
+                                surface,
+                                render_element_states,
+                                dmabuf_feedback.render_feedback,
+                                dmabuf_feedback.scanout_feedback,
+                            )
+                        },
+                    );
+                }
+            }
+        }
+    }
+
+    for window in this.space.elements() {
         window.smithay_window().with_surfaces(|surface, states| {
             let primary_scanout_output = update_surface_primary_scanout_output(
                 surface,
@@ -379,7 +444,6 @@ pub(crate) fn post_repaint(
                 render_element_states,
                 default_primary_scanout_output_compare,
             );
-
             if let Some(output) = primary_scanout_output {
                 with_fractional_scale(states, |fraction_scale| {
                     fraction_scale.set_preferred_scale(output.current_scale().fractional_scale());
@@ -387,7 +451,7 @@ pub(crate) fn post_repaint(
             }
         });
 
-        if space.outputs_for_element(window).contains(output) {
+        if this.space.outputs_for_element(window).contains(output) {
             window.smithay_window().send_frame(
                 output,
                 time,
@@ -421,7 +485,6 @@ pub(crate) fn post_repaint(
                 render_element_states,
                 default_primary_scanout_output_compare,
             );
-
             if let Some(output) = primary_scanout_output {
                 with_fractional_scale(states, |fraction_scale| {
                     fraction_scale.set_preferred_scale(output.current_scale().fractional_scale());
@@ -448,14 +511,41 @@ pub(crate) fn post_repaint(
 }
 
 pub(crate) fn take_presentation_feedback(
+    // TODO: Make it a method.
+    this: &InnerState,
     output: &smithay::output::Output,
-    space: &Space<crate::view::window::Window>,
     render_element_states: &RenderElementStates,
-) -> OutputPresentationFeedback {
+) -> smithay::desktop::utils::OutputPresentationFeedback {
+    use smithay::desktop::utils::{
+        surface_presentation_feedback_flags_from_states, surface_primary_scanout_output,
+        take_presentation_feedback_surface_tree, OutputPresentationFeedback,
+    };
+
     let mut output_presentation_feedback = OutputPresentationFeedback::new(output);
 
-    for window in space.elements() {
-        if space.outputs_for_element(window).contains(output) {
+    use crate::session_lock::SessionLockState;
+    match this.session_lock_data.get_lock_surface(output) {
+        SessionLockState::NotLocked => {}
+        SessionLockState::Locked(output_assoc)
+        | SessionLockState::LockedButClientGone(output_assoc) => {
+            if let Some(lock_surface) = &output_assoc.lock_surface {
+                take_presentation_feedback_surface_tree(
+                    lock_surface.wl_surface(),
+                    &mut output_presentation_feedback,
+                    surface_primary_scanout_output,
+                    |surface, _| {
+                        surface_presentation_feedback_flags_from_states(
+                            surface,
+                            render_element_states,
+                        )
+                    },
+                );
+            }
+        }
+    }
+
+    for window in this.space.elements() {
+        if this.space.outputs_for_element(window).contains(output) {
             window.smithay_window().take_presentation_feedback(
                 &mut output_presentation_feedback,
                 surface_primary_scanout_output,

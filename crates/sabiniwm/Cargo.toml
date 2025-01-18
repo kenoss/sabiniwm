@@ -48,6 +48,7 @@ rstest = "0.18.2"
 
 [features]
 default = ["egl", "udev_deps", "winit", "xwayland"]
+debug_session_lock_client_dead = []
 egl = ["smithay/use_system_lib", "smithay/backend_egl"]
 # Only enables additional feature flags and doesn't affect to code.
 udev_deps = [

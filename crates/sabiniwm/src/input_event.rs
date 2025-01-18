@@ -11,6 +11,7 @@ use smithay::backend::input::{
 use smithay::input::keyboard::FilterResult;
 use smithay::input::pointer::{AxisFrame, ButtonEvent, MotionEvent};
 use smithay::utils::{Logical, Point, Serial, SERIAL_COUNTER};
+use std::ops::ControlFlow;
 
 impl SabiniwmState {
     pub(crate) fn process_input_event<I: InputBackend>(&mut self, event: InputEvent<I>) {
@@ -24,8 +25,7 @@ impl SabiniwmState {
             &event,
         );
         if should_update_focus {
-            let pointer = self.inner.seat.get_pointer().unwrap();
-            self.update_focus(serial, pointer.current_location());
+            self.update_focus(serial);
         }
 
         match &event {
@@ -239,21 +239,94 @@ impl SabiniwmState {
             &event,
         );
         if should_update_focus {
-            let pointer = self.inner.seat.get_pointer().unwrap();
-            self.update_focus(serial, pointer.current_location());
+            self.update_focus(serial);
         }
     }
 
-    fn update_focus(&mut self, serial: Serial, pos: Point<f64, Logical>) {
+    fn reset_focus_if_session_is_locked(
+        &mut self,
+        serial: Serial,
+        pos: Point<f64, Logical>,
+    ) -> std::ops::ControlFlow<(), ()> {
+        let keyboard = self.inner.seat.get_keyboard().unwrap();
+
+        let Some(output) = self.inner.space.outputs().find(|o| {
+            let geometry = self.inner.space.output_geometry(o).unwrap();
+            geometry.contains(pos.to_i32_round())
+        }) else {
+            return ControlFlow::Break(());
+        };
+
+        use crate::session_lock::SessionLockState;
+        match self.inner.session_lock_data.get_lock_surface(output) {
+            SessionLockState::NotLocked => ControlFlow::Continue(()),
+            SessionLockState::Locked(output_assoc) => {
+                match &output_assoc.lock_surface {
+                    Some(lock_surface) => {
+                        use crate::focus::KeyboardFocusTarget;
+
+                        keyboard.set_focus(
+                            self,
+                            Some(KeyboardFocusTarget::SessionLockSurface(
+                                lock_surface.wl_surface().clone(),
+                            )),
+                            serial,
+                        );
+                        ControlFlow::Break(())
+                    }
+                    // Make sure to focus out to prevent emitting events to apps except the lock client
+                    // even if a lock surface doesn't exist.
+                    None => {
+                        keyboard.set_focus(self, None, serial);
+                        ControlFlow::Break(())
+                    }
+                }
+            }
+            // Ditto to the above `None` case.
+            SessionLockState::LockedButClientGone(_) => {
+                keyboard.set_focus(self, None, serial);
+                ControlFlow::Break(())
+            }
+        }
+    }
+
+    // TODO: Use `pub(in crate::session_lock)` instead. (It causes an compilation error.)
+    pub(crate) fn update_focus_when_session_lock_changed(&mut self) {
+        let serial = SERIAL_COUNTER.next_serial();
+        self.update_focus(serial);
+    }
+
+    fn update_focus(&mut self, serial: Serial) {
+        let pointer = self.inner.seat.get_pointer().unwrap();
+        let pos = pointer.current_location();
+
+        match self.reset_focus_if_session_is_locked(serial, pos) {
+            ControlFlow::Continue(_) => {}
+            ControlFlow::Break(_) => return,
+        }
+
         let Some(window) = self.inner.space.element_under(pos).map(|(w, _)| w).cloned() else {
             return;
         };
 
         self.inner.view.set_focus(window.id());
-        self.reflect_focus_from_stackset(Some(serial));
+        self.reflect_focus_from_stackset_aux(serial);
     }
 
-    pub(crate) fn reflect_focus_from_stackset(&mut self, serial: Option<Serial>) {
+    pub(crate) fn reflect_focus_from_stackset(&mut self) {
+        let serial = SERIAL_COUNTER.next_serial();
+        let pointer = self.inner.seat.get_pointer().unwrap();
+        let pos = pointer.current_location();
+
+        match self.reset_focus_if_session_is_locked(serial, pos) {
+            ControlFlow::Continue(_) => {}
+            ControlFlow::Break(_) => return,
+        }
+
+        self.reflect_focus_from_stackset_aux(serial);
+    }
+
+    pub(crate) fn reflect_focus_from_stackset_aux(&mut self, serial: Serial) {
         let Some(window) = self.inner.view.focused_window() else {
             return;
         };
@@ -266,8 +339,6 @@ impl SabiniwmState {
                 toplevel.send_pending_configure();
             }
         }
-
-        let serial = serial.unwrap_or_else(|| SERIAL_COUNTER.next_serial());
 
         let keyboard = self.inner.seat.get_keyboard().unwrap();
         keyboard.set_focus(self, Some(window.smithay_window().clone().into()), serial);

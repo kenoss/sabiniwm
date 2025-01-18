@@ -14,6 +14,26 @@ impl SabiniwmState {
             geometry.contains(pos.to_i32_round())
         })?;
         let output_geo = self.inner.space.output_geometry(output).unwrap();
+
+        use crate::session_lock::SessionLockState;
+        match self.inner.session_lock_data.get_lock_surface(output) {
+            SessionLockState::NotLocked => {}
+            SessionLockState::Locked(output_assoc) => match &output_assoc.lock_surface {
+                Some(lock_surface) => {
+                    return Some((
+                        PointerFocusTarget::from(lock_surface.wl_surface().clone()),
+                        pos.to_i32_round(),
+                    ));
+                }
+                None => {
+                    return None;
+                }
+            },
+            SessionLockState::LockedButClientGone(_) => {
+                return None;
+            }
+        }
+
         let layers = layer_map_for_output(output);
 
         let mut under = None;

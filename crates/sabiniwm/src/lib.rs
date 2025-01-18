@@ -24,7 +24,9 @@ pub(crate) mod model;
 pub mod pointer;
 pub mod render;
 pub(crate) mod render_loop;
+pub(crate) mod session_lock;
 pub mod shell;
+pub(crate) mod smithay_ext;
 pub mod state;
 pub mod state_delegate;
 #[allow(unused)]
