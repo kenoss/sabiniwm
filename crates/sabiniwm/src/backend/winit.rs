@@ -1,11 +1,8 @@
 use crate::backend::BackendI;
 use crate::pointer::PointerElement;
-use crate::render::{output_elements, CustomRenderElement};
+use crate::render::CustomRenderElement;
 use crate::render_loop::RenderLoop;
-use crate::state::{
-    post_repaint, take_presentation_feedback, InnerState, SabiniwmState,
-    SabiniwmStateWithConcreteBackend,
-};
+use crate::state::{InnerState, SabiniwmState, SabiniwmStateWithConcreteBackend};
 use crate::util::EventHandler;
 use eyre::WrapErr;
 use smithay::backend::egl::EGLDevice;
@@ -318,7 +315,8 @@ impl SabiniwmStateWithConcreteBackend<'_, WinitBackend> {
             }
 
             let (elements, clear_color) =
-                output_elements(self.inner, renderer, &self.backend.output, elements);
+                self.inner
+                    .output_elements(renderer, &self.backend.output, elements);
             // TODO: Integrate it with the below `match`.
             match damage_tracker.render_output(renderer, age, &elements, clear_color) {
                 Ok(x) => Ok(x),
@@ -343,8 +341,7 @@ impl SabiniwmStateWithConcreteBackend<'_, WinitBackend> {
 
                 // Send frame events so that client start drawing their next frame
                 let time = self.inner.clock.now();
-                post_repaint(
-                    self.inner,
+                self.inner.post_repaint(
                     &self.backend.output,
                     &render_output_result.states,
                     None,
@@ -352,8 +349,7 @@ impl SabiniwmStateWithConcreteBackend<'_, WinitBackend> {
                 );
 
                 if has_rendered {
-                    let mut output_presentation_feedback = take_presentation_feedback(
-                        self.inner,
+                    let mut output_presentation_feedback = self.inner.take_presentation_feedback(
                         &self.backend.output,
                         &render_output_result.states,
                     );

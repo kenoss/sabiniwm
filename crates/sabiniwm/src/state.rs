@@ -366,60 +366,104 @@ pub(crate) struct SurfaceDmabufFeedback<'a> {
     pub scanout_feedback: &'a DmabufFeedback,
 }
 
-pub(crate) fn post_repaint(
+impl InnerState {
     // TODO: Make it a method.
-    this: &InnerState,
-    output: &smithay::output::Output,
-    render_element_states: &RenderElementStates,
-    dmabuf_feedback: Option<SurfaceDmabufFeedback<'_>>,
-    time: Duration,
-) {
-    use smithay::desktop::utils::{
-        send_dmabuf_feedback_surface_tree, send_frames_surface_tree,
-        surface_primary_scanout_output, update_surface_primary_scanout_output,
-    };
-    use smithay::wayland::compositor::{with_surface_tree_downward, TraversalAction};
+    pub(crate) fn post_repaint(
+        &self,
+        output: &smithay::output::Output,
+        render_element_states: &RenderElementStates,
+        dmabuf_feedback: Option<SurfaceDmabufFeedback<'_>>,
+        time: Duration,
+    ) {
+        use smithay::desktop::utils::{
+            send_dmabuf_feedback_surface_tree, send_frames_surface_tree,
+            surface_primary_scanout_output, update_surface_primary_scanout_output,
+        };
+        use smithay::wayland::compositor::{with_surface_tree_downward, TraversalAction};
 
-    let throttle = Some(Duration::from_secs(1));
+        let throttle = Some(Duration::from_secs(1));
 
-    use crate::session_lock::SessionLockState;
-    match this.session_lock_data.get_lock_surface(output) {
-        SessionLockState::NotLocked => {}
-        SessionLockState::Locked(output_assoc) => {
-            if let Some(lock_surface) = &output_assoc.lock_surface {
-                with_surface_tree_downward(
-                    lock_surface.wl_surface(),
-                    (),
-                    |_, _, _| TraversalAction::DoChildren(()),
-                    |surface, states, _| {
-                        let primary_scanout_output = update_surface_primary_scanout_output(
-                            surface,
+        use crate::session_lock::SessionLockState;
+        match self.session_lock_data.get_lock_surface(output) {
+            SessionLockState::NotLocked => {}
+            SessionLockState::Locked(output_assoc) => {
+                if let Some(lock_surface) = &output_assoc.lock_surface {
+                    with_surface_tree_downward(
+                        lock_surface.wl_surface(),
+                        (),
+                        |_, _, _| TraversalAction::DoChildren(()),
+                        |surface, states, _| {
+                            let primary_scanout_output = update_surface_primary_scanout_output(
+                                surface,
+                                output,
+                                states,
+                                render_element_states,
+                                default_primary_scanout_output_compare,
+                            );
+                            if let Some(output) = primary_scanout_output {
+                                with_fractional_scale(states, |fraction_scale| {
+                                    fraction_scale.set_preferred_scale(
+                                        output.current_scale().fractional_scale(),
+                                    );
+                                });
+                            }
+                        },
+                        |_, _, _| true,
+                    );
+                    send_frames_surface_tree(
+                        lock_surface.wl_surface(),
+                        output,
+                        time,
+                        throttle,
+                        surface_primary_scanout_output,
+                    );
+                    if let Some(dmabuf_feedback) = dmabuf_feedback {
+                        send_dmabuf_feedback_surface_tree(
+                            lock_surface.wl_surface(),
                             output,
-                            states,
-                            render_element_states,
-                            default_primary_scanout_output_compare,
+                            |_, _| Some(output.clone()),
+                            |surface, _| {
+                                select_dmabuf_feedback(
+                                    surface,
+                                    render_element_states,
+                                    dmabuf_feedback.render_feedback,
+                                    dmabuf_feedback.scanout_feedback,
+                                )
+                            },
                         );
-                        if let Some(output) = primary_scanout_output {
-                            with_fractional_scale(states, |fraction_scale| {
-                                fraction_scale
-                                    .set_preferred_scale(output.current_scale().fractional_scale());
-                            });
-                        }
-                    },
-                    |_, _, _| true,
+                    }
+                }
+            }
+        }
+
+        for window in self.space.elements() {
+            window.smithay_window().with_surfaces(|surface, states| {
+                let primary_scanout_output = update_surface_primary_scanout_output(
+                    surface,
+                    output,
+                    states,
+                    render_element_states,
+                    default_primary_scanout_output_compare,
                 );
-                send_frames_surface_tree(
-                    lock_surface.wl_surface(),
+                if let Some(output) = primary_scanout_output {
+                    with_fractional_scale(states, |fraction_scale| {
+                        fraction_scale
+                            .set_preferred_scale(output.current_scale().fractional_scale());
+                    });
+                }
+            });
+
+            if self.space.outputs_for_element(window).contains(output) {
+                window.smithay_window().send_frame(
                     output,
                     time,
                     throttle,
                     surface_primary_scanout_output,
                 );
                 if let Some(dmabuf_feedback) = dmabuf_feedback {
-                    send_dmabuf_feedback_surface_tree(
-                        lock_surface.wl_surface(),
+                    window.smithay_window().send_dmabuf_feedback(
                         output,
-                        |_, _| Some(output.clone()),
+                        surface_primary_scanout_output,
                         |surface, _| {
                             select_dmabuf_feedback(
                                 surface,
@@ -432,33 +476,28 @@ pub(crate) fn post_repaint(
                 }
             }
         }
-    }
 
-    for window in this.space.elements() {
-        window.smithay_window().with_surfaces(|surface, states| {
-            let primary_scanout_output = update_surface_primary_scanout_output(
-                surface,
-                output,
-                states,
-                render_element_states,
-                default_primary_scanout_output_compare,
-            );
-            if let Some(output) = primary_scanout_output {
-                with_fractional_scale(states, |fraction_scale| {
-                    fraction_scale.set_preferred_scale(output.current_scale().fractional_scale());
-                });
-            }
-        });
+        let map = smithay::desktop::layer_map_for_output(output);
+        for layer_surface in map.layers() {
+            layer_surface.with_surfaces(|surface, states| {
+                let primary_scanout_output = update_surface_primary_scanout_output(
+                    surface,
+                    output,
+                    states,
+                    render_element_states,
+                    default_primary_scanout_output_compare,
+                );
+                if let Some(output) = primary_scanout_output {
+                    with_fractional_scale(states, |fraction_scale| {
+                        fraction_scale
+                            .set_preferred_scale(output.current_scale().fractional_scale());
+                    });
+                }
+            });
 
-        if this.space.outputs_for_element(window).contains(output) {
-            window.smithay_window().send_frame(
-                output,
-                time,
-                throttle,
-                surface_primary_scanout_output,
-            );
+            layer_surface.send_frame(output, time, throttle, surface_primary_scanout_output);
             if let Some(dmabuf_feedback) = dmabuf_feedback {
-                window.smithay_window().send_dmabuf_feedback(
+                layer_surface.send_dmabuf_feedback(
                     output,
                     surface_primary_scanout_output,
                     |surface, _| {
@@ -474,61 +513,42 @@ pub(crate) fn post_repaint(
         }
     }
 
-    let map = smithay::desktop::layer_map_for_output(output);
-    for layer_surface in map.layers() {
-        layer_surface.with_surfaces(|surface, states| {
-            let primary_scanout_output = update_surface_primary_scanout_output(
-                surface,
-                output,
-                states,
-                render_element_states,
-                default_primary_scanout_output_compare,
-            );
-            if let Some(output) = primary_scanout_output {
-                with_fractional_scale(states, |fraction_scale| {
-                    fraction_scale.set_preferred_scale(output.current_scale().fractional_scale());
-                });
-            }
-        });
-
-        layer_surface.send_frame(output, time, throttle, surface_primary_scanout_output);
-        if let Some(dmabuf_feedback) = dmabuf_feedback {
-            layer_surface.send_dmabuf_feedback(
-                output,
-                surface_primary_scanout_output,
-                |surface, _| {
-                    select_dmabuf_feedback(
-                        surface,
-                        render_element_states,
-                        dmabuf_feedback.render_feedback,
-                        dmabuf_feedback.scanout_feedback,
-                    )
-                },
-            );
-        }
-    }
-}
-
-pub(crate) fn take_presentation_feedback(
     // TODO: Make it a method.
-    this: &InnerState,
-    output: &smithay::output::Output,
-    render_element_states: &RenderElementStates,
-) -> smithay::desktop::utils::OutputPresentationFeedback {
-    use smithay::desktop::utils::{
-        surface_presentation_feedback_flags_from_states, surface_primary_scanout_output,
-        take_presentation_feedback_surface_tree, OutputPresentationFeedback,
-    };
+    pub(crate) fn take_presentation_feedback(
+        &self,
+        output: &smithay::output::Output,
+        render_element_states: &RenderElementStates,
+    ) -> smithay::desktop::utils::OutputPresentationFeedback {
+        use smithay::desktop::utils::{
+            surface_presentation_feedback_flags_from_states, surface_primary_scanout_output,
+            take_presentation_feedback_surface_tree, OutputPresentationFeedback,
+        };
 
-    let mut output_presentation_feedback = OutputPresentationFeedback::new(output);
+        let mut output_presentation_feedback = OutputPresentationFeedback::new(output);
 
-    use crate::session_lock::SessionLockState;
-    match this.session_lock_data.get_lock_surface(output) {
-        SessionLockState::NotLocked => {}
-        SessionLockState::Locked(output_assoc) => {
-            if let Some(lock_surface) = &output_assoc.lock_surface {
-                take_presentation_feedback_surface_tree(
-                    lock_surface.wl_surface(),
+        use crate::session_lock::SessionLockState;
+        match self.session_lock_data.get_lock_surface(output) {
+            SessionLockState::NotLocked => {}
+            SessionLockState::Locked(output_assoc) => {
+                if let Some(lock_surface) = &output_assoc.lock_surface {
+                    take_presentation_feedback_surface_tree(
+                        lock_surface.wl_surface(),
+                        &mut output_presentation_feedback,
+                        surface_primary_scanout_output,
+                        |surface, _| {
+                            surface_presentation_feedback_flags_from_states(
+                                surface,
+                                render_element_states,
+                            )
+                        },
+                    );
+                }
+            }
+        }
+
+        for window in self.space.elements() {
+            if self.space.outputs_for_element(window).contains(output) {
+                window.smithay_window().take_presentation_feedback(
                     &mut output_presentation_feedback,
                     surface_primary_scanout_output,
                     |surface, _| {
@@ -540,11 +560,10 @@ pub(crate) fn take_presentation_feedback(
                 );
             }
         }
-    }
 
-    for window in this.space.elements() {
-        if this.space.outputs_for_element(window).contains(output) {
-            window.smithay_window().take_presentation_feedback(
+        let map = smithay::desktop::layer_map_for_output(output);
+        for layer_surface in map.layers() {
+            layer_surface.take_presentation_feedback(
                 &mut output_presentation_feedback,
                 surface_primary_scanout_output,
                 |surface, _| {
@@ -552,20 +571,9 @@ pub(crate) fn take_presentation_feedback(
                 },
             );
         }
-    }
 
-    let map = smithay::desktop::layer_map_for_output(output);
-    for layer_surface in map.layers() {
-        layer_surface.take_presentation_feedback(
-            &mut output_presentation_feedback,
-            surface_primary_scanout_output,
-            |surface, _| {
-                surface_presentation_feedback_flags_from_states(surface, render_element_states)
-            },
-        );
+        output_presentation_feedback
     }
-
-    output_presentation_feedback
 }
 
 impl EventHandler<XWaylandEvent> for SabiniwmState {

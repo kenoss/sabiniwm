@@ -104,69 +104,71 @@ where
     }
 }
 
-pub(crate) fn output_elements<R>(
+impl InnerState {
     // TODO: Make it a method.
-    this: &InnerState,
-    renderer: &mut R,
-    output: &Output,
-    additional_elements: Vec<CustomRenderElement<R>>,
-) -> (
-    Vec<OutputRenderElement<R, WindowRenderElement<R>>>,
-    [f32; 4],
-)
-where
-    R: Renderer + ImportAll + ImportMem,
-    R::TextureId: Clone + 'static,
-{
-    use smithay::backend::renderer::element::surface::render_elements_from_surface_tree;
-    use smithay::backend::renderer::element::Kind;
+    pub(crate) fn output_elements<R>(
+        &self,
+        renderer: &mut R,
+        output: &Output,
+        additional_elements: Vec<CustomRenderElement<R>>,
+    ) -> (
+        Vec<OutputRenderElement<R, WindowRenderElement<R>>>,
+        [f32; 4],
+    )
+    where
+        R: Renderer + ImportAll + ImportMem,
+        R::TextureId: Clone + 'static,
+    {
+        use smithay::backend::renderer::element::surface::render_elements_from_surface_tree;
+        use smithay::backend::renderer::element::Kind;
 
-    let mut elements = additional_elements
-        .into_iter()
-        .map(OutputRenderElement::from)
-        .collect::<Vec<_>>();
+        let mut elements = additional_elements
+            .into_iter()
+            .map(OutputRenderElement::from)
+            .collect::<Vec<_>>();
 
-    use crate::session_lock::SessionLockState;
-    match this.session_lock_data.get_lock_surface(output) {
-        SessionLockState::NotLocked => {}
-        SessionLockState::Locked(output_assoc) => {
-            // If the session is locked, hide outputs by solid background and show a lock screen if exists.
-            // Note that a lock screen may not exist, for example, if it is not yet provided or the lock client is killed.
+        use crate::session_lock::SessionLockState;
+        match self.session_lock_data.get_lock_surface(output) {
+            SessionLockState::NotLocked => {}
+            SessionLockState::Locked(output_assoc) => {
+                // If the session is locked, hide outputs by solid background and show a lock screen if exists.
+                // Note that a lock screen may not exist, for example, if it is not yet provided or the lock client is killed.
 
-            let output_scale =
-                smithay::utils::Scale::from(output.current_scale().fractional_scale());
+                let output_scale =
+                    smithay::utils::Scale::from(output.current_scale().fractional_scale());
 
-            if let Some(lock_surface) = &output_assoc.lock_surface {
-                elements.extend(
-                    render_elements_from_surface_tree(
-                        renderer,
-                        lock_surface.wl_surface(),
+                if let Some(lock_surface) = &output_assoc.lock_surface {
+                    elements.extend(
+                        render_elements_from_surface_tree(
+                            renderer,
+                            lock_surface.wl_surface(),
+                            (0, 0),
+                            output_scale,
+                            1.,
+                            Kind::Unspecified,
+                        )
+                        .into_iter()
+                        .map(OutputRenderElement::SessionLockSurface),
+                    );
+                }
+
+                elements.push(OutputRenderElement::SessionLockBackground(
+                    SolidColorRenderElement::from_buffer(
+                        &output_assoc.background,
                         (0, 0),
                         output_scale,
                         1.,
                         Kind::Unspecified,
-                    )
-                    .into_iter()
-                    .map(OutputRenderElement::SessionLockSurface),
-                );
+                    ),
+                ));
             }
-
-            elements.push(OutputRenderElement::SessionLockBackground(
-                SolidColorRenderElement::from_buffer(
-                    &output_assoc.background,
-                    (0, 0),
-                    output_scale,
-                    1.,
-                    Kind::Unspecified,
-                ),
-            ));
         }
+
+        let space_elements =
+            smithay::desktop::space::space_render_elements(renderer, [&self.space], output, 1.0)
+                .expect("output without mode?");
+        elements.extend(space_elements.into_iter().map(OutputRenderElement::Space));
+
+        (elements, CLEAR_COLOR)
     }
-
-    let space_elements =
-        smithay::desktop::space::space_render_elements(renderer, [&this.space], output, 1.0)
-            .expect("output without mode?");
-    elements.extend(space_elements.into_iter().map(OutputRenderElement::Space));
-
-    (elements, CLEAR_COLOR)
 }

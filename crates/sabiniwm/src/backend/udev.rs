@@ -2,11 +2,10 @@ use crate::backend::BackendI;
 use crate::config::ConfigDelegateUnstableI;
 use crate::envvar::EnvVar;
 use crate::pointer::{PointerElement, CLEAR_COLOR};
-use crate::render::{output_elements, CustomRenderElement, OutputRenderElement};
+use crate::render::{CustomRenderElement, OutputRenderElement};
 use crate::render_loop::RenderLoop;
 use crate::state::{
-    post_repaint, take_presentation_feedback, InnerState, SabiniwmState,
-    SabiniwmStateWithConcreteBackend, SurfaceDmabufFeedback,
+    InnerState, SabiniwmState, SabiniwmStateWithConcreteBackend, SurfaceDmabufFeedback,
 };
 use crate::util::EventHandler;
 use crate::view::window::WindowRenderElement;
@@ -1278,15 +1277,11 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
             &mut self.inner.cursor_status.lock().unwrap(),
         );
         let (elements, clear_color) =
-            output_elements(self.inner, &mut renderer, &output, additional_elements);
-        let result = render_surface(
-            self.inner,
-            surface,
-            &mut renderer,
-            &output,
-            elements,
-            clear_color,
-        );
+            self.inner
+                .output_elements(&mut renderer, &output, additional_elements);
+        let result =
+            self.inner
+                .render_surface(surface, &mut renderer, &output, elements, clear_color);
         let should_reschedule_render = match &result {
             Ok(has_rendered) => !has_rendered,
             Err(err) => {
@@ -1438,49 +1433,51 @@ where
     elements
 }
 
-fn render_surface<R>(
+impl InnerState {
     // TODO: Make it a method.
-    this: &InnerState,
-    surface: &mut SurfaceData,
-    renderer: &mut R,
-    output: &smithay::output::Output,
-    elements: Vec<OutputRenderElement<R, WindowRenderElement<R>>>,
-    clear_color: [f32; 4],
-) -> Result<bool, SwapBuffersError>
-where
-    R: Renderer + ImportAll + ImportMem,
-    R::TextureId: Clone + 'static,
-    R: ExportMem + Offscreen<GlesTexture> + smithay::backend::renderer::Bind<Dmabuf>,
-    <R as Renderer>::Error: Into<smithay::backend::SwapBuffersError>,
-{
-    let res =
-        surface
-            .compositor
-            .render_frame::<_, _, GlesTexture>(renderer, &elements, clear_color)?;
+    fn render_surface<R>(
+        &self,
+        surface: &mut SurfaceData,
+        renderer: &mut R,
+        output: &smithay::output::Output,
+        elements: Vec<OutputRenderElement<R, WindowRenderElement<R>>>,
+        clear_color: [f32; 4],
+    ) -> Result<bool, SwapBuffersError>
+    where
+        R: Renderer + ImportAll + ImportMem,
+        R::TextureId: Clone + 'static,
+        R: ExportMem + Offscreen<GlesTexture> + smithay::backend::renderer::Bind<Dmabuf>,
+        <R as Renderer>::Error: Into<smithay::backend::SwapBuffersError>,
+    {
+        let res = surface.compositor.render_frame::<_, _, GlesTexture>(
+            renderer,
+            &elements,
+            clear_color,
+        )?;
 
-    post_repaint(
-        this,
-        output,
-        &res.states,
-        surface
-            .dmabuf_feedback
-            .as_ref()
-            .map(|feedback| SurfaceDmabufFeedback {
-                render_feedback: &feedback.render_feedback,
-                scanout_feedback: &feedback.scanout_feedback,
-            }),
-        this.clock.now().into(),
-    );
+        self.post_repaint(
+            output,
+            &res.states,
+            surface
+                .dmabuf_feedback
+                .as_ref()
+                .map(|feedback| SurfaceDmabufFeedback {
+                    render_feedback: &feedback.render_feedback,
+                    scanout_feedback: &feedback.scanout_feedback,
+                }),
+            self.clock.now().into(),
+        );
 
-    if res.rendered {
-        let output_presentation_feedback = take_presentation_feedback(this, output, &res.states);
-        surface
-            .compositor
-            .queue_frame(res.sync, res.damage, Some(output_presentation_feedback))
-            .map_err(Into::<SwapBuffersError>::into)?;
+        if res.rendered {
+            let output_presentation_feedback = self.take_presentation_feedback(output, &res.states);
+            surface
+                .compositor
+                .queue_frame(res.sync, res.damage, Some(output_presentation_feedback))
+                .map_err(Into::<SwapBuffersError>::into)?;
+        }
+
+        Ok(res.rendered)
     }
-
-    Ok(res.rendered)
 }
 
 fn initial_render(
