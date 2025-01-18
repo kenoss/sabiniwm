@@ -29,9 +29,6 @@ impl SabiniwmState {
                     return None;
                 }
             },
-            SessionLockState::LockedButClientGone(_) => {
-                return None;
-            }
         }
 
         let layers = layer_map_for_output(output);

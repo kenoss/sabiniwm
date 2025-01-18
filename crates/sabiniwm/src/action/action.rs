@@ -66,16 +66,11 @@ impl SabiniwmState {
     pub(crate) fn process_action(&mut self, action: &Action) {
         info!("{:?}", action);
 
-        use crate::session_lock::SessionLockState;
-        let is_locked = match self.inner.session_lock_data.normalized_state() {
-            SessionLockState::NotLocked => false,
-            SessionLockState::Locked(()) | SessionLockState::LockedButClientGone(()) => true,
-        };
         // Disable to execute actions.
         //
         // If a feature flag for debug is enabled, allow to execute actions.
         #[cfg(not(feature = "debug_session_lock_client_dead"))]
-        if is_locked {
+        if self.inner.session_lock_data.is_locked() {
             warn!("Actions are not allowed if session is locked");
             return;
         }

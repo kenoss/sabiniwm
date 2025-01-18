@@ -11,22 +11,6 @@ use std::collections::HashMap;
 pub(crate) enum SessionLockState<T> {
     NotLocked,
     Locked(T),
-    // TODO: Consider to remove if it's secure without it.
-    LockedButClientGone(T),
-}
-
-impl<T> SessionLockState<T> {
-    #[inline]
-    fn map<U, F>(self, f: F) -> SessionLockState<U>
-    where
-        F: FnOnce(T) -> U,
-    {
-        match self {
-            SessionLockState::NotLocked => SessionLockState::NotLocked,
-            SessionLockState::Locked(x) => SessionLockState::Locked(f(x)),
-            SessionLockState::LockedButClientGone(x) => SessionLockState::LockedButClientGone(f(x)),
-        }
-    }
 }
 
 pub(crate) struct SessionLockData {
@@ -68,15 +52,10 @@ impl SessionLockData {
         self.output_assocs.insert(output.clone(), output_assoc);
     }
 
-    #[inline]
-    pub fn normalized_state(&self) -> SessionLockState<()> {
-        use wayland_server::Resource;
-
+    pub fn is_locked(&self) -> bool {
         match &self.state {
-            SessionLockState::NotLocked => SessionLockState::NotLocked,
-            SessionLockState::Locked(ext) if ext.is_alive() => SessionLockState::Locked(()),
-            SessionLockState::Locked(_) => SessionLockState::LockedButClientGone(()),
-            SessionLockState::LockedButClientGone(_) => unreachable!(),
+            SessionLockState::NotLocked => false,
+            SessionLockState::Locked(_) => true,
         }
     }
 
@@ -84,8 +63,12 @@ impl SessionLockData {
         &self,
         output: &smithay::output::Output,
     ) -> SessionLockState<&SessionLockOutputAssoc> {
-        self.normalized_state()
-            .map(|()| self.output_assocs.get(output).unwrap())
+        match &self.state {
+            SessionLockState::NotLocked => SessionLockState::NotLocked,
+            SessionLockState::Locked(_) => {
+                SessionLockState::Locked(self.output_assocs.get(output).unwrap())
+            }
+        }
     }
 }
 
@@ -95,9 +78,9 @@ impl SessionLockHandler for SessionLockData {
     }
 
     fn lock(&mut self, confirmation: SessionLocker) {
-        match self.normalized_state() {
+        match &self.state {
             SessionLockState::NotLocked => {}
-            SessionLockState::Locked(()) | SessionLockState::LockedButClientGone(()) => {
+            SessionLockState::Locked(_) => {
                 info!("new session lock request is refused as already locked with another client");
                 return;
             }

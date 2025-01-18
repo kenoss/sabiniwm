@@ -129,8 +129,7 @@ where
     use crate::session_lock::SessionLockState;
     match this.session_lock_data.get_lock_surface(output) {
         SessionLockState::NotLocked => {}
-        SessionLockState::Locked(output_assoc)
-        | SessionLockState::LockedButClientGone(output_assoc) => {
+        SessionLockState::Locked(output_assoc) => {
             // If the session is locked, hide outputs by solid background and show a lock screen if exists.
             // Note that a lock screen may not exist, for example, if it is not yet provided or the lock client is killed.
 

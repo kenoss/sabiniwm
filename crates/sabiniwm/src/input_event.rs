@@ -282,11 +282,6 @@ impl SabiniwmState {
                     }
                 }
             }
-            // Ditto to the above `None` case.
-            SessionLockState::LockedButClientGone(_) => {
-                keyboard.set_focus(self, None, serial);
-                ControlFlow::Break(())
-            }
         }
     }
 

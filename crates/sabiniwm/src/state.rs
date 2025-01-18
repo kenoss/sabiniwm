@@ -385,8 +385,7 @@ pub(crate) fn post_repaint(
     use crate::session_lock::SessionLockState;
     match this.session_lock_data.get_lock_surface(output) {
         SessionLockState::NotLocked => {}
-        SessionLockState::Locked(output_assoc)
-        | SessionLockState::LockedButClientGone(output_assoc) => {
+        SessionLockState::Locked(output_assoc) => {
             if let Some(lock_surface) = &output_assoc.lock_surface {
                 with_surface_tree_downward(
                     lock_surface.wl_surface(),
@@ -526,8 +525,7 @@ pub(crate) fn take_presentation_feedback(
     use crate::session_lock::SessionLockState;
     match this.session_lock_data.get_lock_surface(output) {
         SessionLockState::NotLocked => {}
-        SessionLockState::Locked(output_assoc)
-        | SessionLockState::LockedButClientGone(output_assoc) => {
+        SessionLockState::Locked(output_assoc) => {
             if let Some(lock_surface) = &output_assoc.lock_surface {
                 take_presentation_feedback_surface_tree(
                     lock_surface.wl_surface(),
