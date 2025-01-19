@@ -118,6 +118,10 @@ You can run it with udev backend in the following ways:
 - From TTY (i.e., turning off display manager): Just `cargo run` works.
 - From display manager: Use `just install-session-dev` and select `sabiniwm`.
 
+## TODO
+
+- smithay `d4780c5`: Consider to add `#[inline]` for derived operations.
+
 ## License
 
 This repository is distributed under the terms of both the MIT license and the
