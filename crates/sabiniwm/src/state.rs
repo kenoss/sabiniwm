@@ -13,6 +13,7 @@ use smithay::desktop::{PopupManager, Space};
 use smithay::input::pointer::{CursorImageStatus, PointerHandle};
 use smithay::input::{Seat, SeatState};
 use smithay::reexports::calloop::{EventLoop, LoopHandle, LoopSignal};
+use smithay::reexports::wayland_server;
 use smithay::reexports::wayland_server::backend::{ClientData, ClientId, DisconnectReason};
 use smithay::reexports::wayland_server::{Display, DisplayHandle};
 use smithay::utils::{Clock, Monotonic, Point, Rectangle, Size};
@@ -37,7 +38,6 @@ use smithay::wayland::xdg_activation::XdgActivationState;
 use smithay::wayland::xdg_foreign::XdgForeignState;
 use smithay::wayland::xwayland_keyboard_grab::XWaylandKeyboardGrabState;
 use smithay::xwayland::{X11Wm, XWayland, XWaylandEvent};
-use std::ffi::OsString;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -91,9 +91,7 @@ pub(crate) struct InnerState {
     pub clock: Clock<Monotonic>,
     pub pointer: PointerHandle<SabiniwmState>,
 
-    // Holds not to `drop()`, which invokes `XWayland::shutdown()`.
-    #[allow(unused)]
-    pub xwayland: XWayland,
+    pub xwayland_client: wayland_server::Client,
     pub xwm: Option<X11Wm>,
     pub xdisplay: Option<u32>,
 
@@ -257,26 +255,27 @@ impl SabiniwmState {
         let keyboard_shortcuts_inhibit_state =
             KeyboardShortcutsInhibitState::new::<Self>(&display_handle);
 
-        let xwayland = {
-            XWaylandKeyboardGrabState::new::<Self>(&display_handle);
+        let xwayland_client = {
+            use std::process::Stdio;
 
-            let (xwayland, channel) = XWayland::new(&display_handle);
+            XWaylandKeyboardGrabState::new::<Self>(&display_handle.clone());
+
+            let (xwayland, xwayland_client) = XWayland::spawn(
+                &display_handle,
+                None,
+                std::iter::empty::<(String, String)>(),
+                true,
+                Stdio::null(),
+                Stdio::null(),
+                |_| (),
+            )
+            .wrap_err("XWayland::spawn()")?;
 
             loop_handle
-                .insert_source(channel, move |event, _, state| state.handle_event(event))
+                .insert_source(xwayland, move |event, _, state| state.handle_event(event))
                 .map_err(|e| eyre::eyre!("{}", e))?;
 
-            xwayland
-                .start(
-                    loop_handle.clone(),
-                    None,
-                    std::iter::empty::<(OsString, OsString)>(),
-                    true,
-                    |_| {},
-                )
-                .wrap_err("XWayland::start()")?;
-
-            xwayland
+            xwayland_client
         };
 
         let keymap = config_delegate.make_keymap(backend.is_udev());
@@ -310,7 +309,7 @@ impl SabiniwmState {
                 seat,
                 pointer,
                 clock: Clock::new(),
-                xwayland,
+                xwayland_client,
                 xwm: None,
                 xdisplay: None,
 
@@ -351,18 +350,17 @@ impl EventHandler<XWaylandEvent> for SabiniwmState {
     fn handle_event(&mut self, event: XWaylandEvent) {
         match event {
             XWaylandEvent::Ready {
-                connection,
-                client,
-                display,
-                ..
+                x11_socket,
+                display_number,
             } => {
                 let mut wm = X11Wm::start_wm(
                     self.inner.loop_handle.clone(),
                     self.inner.display_handle.clone(),
-                    connection,
-                    client,
+                    x11_socket,
+                    self.inner.xwayland_client.clone(),
                 )
-                .expect("Failed to attach X11 Window Manager");
+                .expect("attach X11 Window Manager");
+
                 let cursor = Cursor::load();
                 let image = cursor.get_image(1, Duration::ZERO);
                 wm.set_cursor(
@@ -370,13 +368,13 @@ impl EventHandler<XWaylandEvent> for SabiniwmState {
                     Size::from((image.width as u16, image.height as u16)),
                     Point::from((image.xhot as u16, image.yhot as u16)),
                 )
-                .expect("Failed to set xwayland default cursor");
-                std::env::set_var("DISPLAY", format!(":{}", display));
+                .expect("set xwayland default cursor");
+
                 self.inner.xwm = Some(wm);
-                self.inner.xdisplay = Some(display);
+                self.inner.xdisplay = Some(display_number);
             }
-            XWaylandEvent::Exited => {
-                let _ = self.inner.xwm.take();
+            XWaylandEvent::Error => {
+                warn!("XWayland crashed on startup");
             }
         }
     }
