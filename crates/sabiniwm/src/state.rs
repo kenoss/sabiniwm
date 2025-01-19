@@ -30,7 +30,7 @@ use smithay::wayland::shell::wlr_layer::WlrLayerShellState;
 use smithay::wayland::shell::xdg::XdgShellState;
 use smithay::wayland::shm::ShmState;
 use smithay::wayland::socket::ListeningSocketSource;
-use smithay::wayland::tablet_manager::{TabletManagerState, TabletSeatTrait};
+use smithay::wayland::tablet_manager::TabletManagerState;
 use smithay::wayland::text_input::TextInputManagerState;
 use smithay::wayland::virtual_keyboard::VirtualKeyboardManagerState;
 use smithay::wayland::xdg_activation::XdgActivationState;
@@ -253,13 +253,6 @@ impl SabiniwmState {
             xkb_config.repeat_rate.into(),
         )
         .unwrap();
-
-        let cursor_status2 = cursor_status.clone();
-        seat.tablet_seat()
-            .on_cursor_surface(move |_tool, new_status| {
-                // TODO: tablet tools should have their own cursors
-                *cursor_status2.lock().unwrap() = new_status;
-            });
 
         let keyboard_shortcuts_inhibit_state =
             KeyboardShortcutsInhibitState::new::<Self>(&display_handle);

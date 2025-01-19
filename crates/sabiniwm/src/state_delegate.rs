@@ -165,8 +165,22 @@ impl SeatHandler for SabiniwmState {
 }
 
 smithay::delegate_seat!(SabiniwmState);
-smithay::delegate_tablet_manager!(SabiniwmState);
 smithay::delegate_text_input_manager!(SabiniwmState);
+
+mod tablet_seat_handler {
+    use super::*;
+    use smithay::backend::input::TabletToolDescriptor;
+    use smithay::wayland::tablet_manager::TabletSeatHandler;
+
+    impl TabletSeatHandler for SabiniwmState {
+        fn tablet_tool_image(&mut self, _tool: &TabletToolDescriptor, image: CursorImageStatus) {
+            // TODO: tablet tools should have their own cursors
+            *self.inner.cursor_status.lock().unwrap() = image;
+        }
+    }
+
+    smithay::delegate_tablet_manager!(SabiniwmState);
+}
 
 impl InputMethodHandler for SabiniwmState {
     fn new_popup(&mut self, surface: PopupSurface) {
