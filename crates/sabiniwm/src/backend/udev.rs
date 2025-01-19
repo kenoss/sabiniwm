@@ -1272,7 +1272,7 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
             &pointer_image,
             &mut self.backend.pointer_element,
             &self.inner.dnd_icon,
-            &mut self.inner.cursor_status.lock().unwrap(),
+            &mut self.inner.cursor_status,
         );
         let (elements, clear_color) =
             self.inner

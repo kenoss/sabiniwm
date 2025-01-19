@@ -155,8 +155,9 @@ impl SeatHandler for SabiniwmState {
         set_data_device_focus(dh, seat, focus.clone());
         set_primary_focus(dh, seat, focus);
     }
+
     fn cursor_image(&mut self, _seat: &Seat<Self>, image: CursorImageStatus) {
-        *self.inner.cursor_status.lock().unwrap() = image;
+        self.inner.cursor_status = image;
     }
 
     fn led_state_changed(&mut self, _seat: &Seat<Self>, led_state: LedState) {
@@ -175,7 +176,7 @@ mod tablet_seat_handler {
     impl TabletSeatHandler for SabiniwmState {
         fn tablet_tool_image(&mut self, _tool: &TabletToolDescriptor, image: CursorImageStatus) {
             // TODO: tablet tools should have their own cursors
-            *self.inner.cursor_status.lock().unwrap() = image;
+            self.inner.cursor_status = image;
         }
     }
 

@@ -38,7 +38,7 @@ use smithay::wayland::xdg_foreign::XdgForeignState;
 use smithay::wayland::xwayland_keyboard_grab::XWaylandKeyboardGrabState;
 use smithay::xwayland::{X11Wm, XWayland, XWaylandEvent};
 use std::ffi::OsString;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::Duration;
 
 #[derive(Debug, Default)]
@@ -85,7 +85,7 @@ pub(crate) struct InnerState {
     pub dnd_icon: Option<wayland_server::protocol::wl_surface::WlSurface>,
 
     // input-related fields
-    pub cursor_status: Arc<Mutex<CursorImageStatus>>,
+    pub cursor_status: CursorImageStatus,
     pub seat_name: String,
     pub seat: Seat<SabiniwmState>,
     pub clock: Clock<Monotonic>,
@@ -243,7 +243,7 @@ impl SabiniwmState {
         let seat_name = backend.seat_name();
         let mut seat = seat_state.new_wl_seat(&display_handle, seat_name.clone());
 
-        let cursor_status = Arc::new(Mutex::new(CursorImageStatus::default_named()));
+        let cursor_status = CursorImageStatus::default_named();
         let pointer = seat.add_pointer();
 
         let xkb_config = config_delegate.get_xkb_config();
