@@ -4,9 +4,7 @@ use crate::envvar::EnvVar;
 use crate::pointer::{PointerElement, CLEAR_COLOR};
 use crate::render::{CustomRenderElement, OutputRenderElement};
 use crate::render_loop::RenderLoop;
-use crate::state::{
-    InnerState, SabiniwmState, SabiniwmStateWithConcreteBackend, SurfaceDmabufFeedback,
-};
+use crate::state::{InnerState, SabiniwmState, SabiniwmStateWithConcreteBackend};
 use crate::util::EventHandler;
 use crate::view::window::WindowRenderElement;
 use crate::wl_global::WlGlobal;
@@ -1461,7 +1459,7 @@ impl InnerState {
             surface
                 .dmabuf_feedback
                 .as_ref()
-                .map(|feedback| SurfaceDmabufFeedback {
+                .map(|feedback| crate::render::SurfaceDmabufFeedback {
                     render_feedback: &feedback.render_feedback,
                     scanout_feedback: &feedback.scanout_feedback,
                 }),
