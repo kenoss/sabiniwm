@@ -16,7 +16,6 @@ use smithay::reexports::wayland_server::Resource;
 use smithay::utils::Rectangle;
 use smithay::wayland::compositor::{get_parent, with_states};
 use smithay::wayland::fractional_scale::{with_fractional_scale, FractionalScaleHandler};
-use smithay::wayland::input_method::{InputMethodHandler, PopupSurface};
 use smithay::wayland::keyboard_shortcuts_inhibit::{
     KeyboardShortcutsInhibitHandler, KeyboardShortcutsInhibitState, KeyboardShortcutsInhibitor,
 };
@@ -183,34 +182,39 @@ mod tablet_seat_handler {
     smithay::delegate_tablet_manager!(SabiniwmState);
 }
 
-impl InputMethodHandler for SabiniwmState {
-    fn new_popup(&mut self, surface: PopupSurface) {
-        if let Err(err) = self.inner.popups.track_popup(PopupKind::from(surface)) {
-            warn!("Failed to track popup: {}", err);
+mod input_method_handler {
+    use super::*;
+    use smithay::wayland::input_method::{InputMethodHandler, PopupSurface};
+
+    impl InputMethodHandler for SabiniwmState {
+        fn new_popup(&mut self, surface: PopupSurface) {
+            if let Err(err) = self.inner.popups.track_popup(PopupKind::from(surface)) {
+                warn!("Failed to track popup: {}", err);
+            }
+        }
+
+        fn dismiss_popup(&mut self, surface: PopupSurface) {
+            if let Some(parent) = surface.get_parent().map(|parent| parent.surface.clone()) {
+                let _ = PopupManager::dismiss_popup(&parent, &PopupKind::from(surface));
+            }
+        }
+
+        fn popup_repositioned(&mut self, _surface: PopupSurface) {}
+
+        fn parent_geometry(&self, parent: &WlSurface) -> Rectangle<i32, smithay::utils::Logical> {
+            self.inner
+                .space
+                .elements()
+                .find_map(|window| {
+                    (window.smithay_window().wl_surface().as_ref() == Some(parent))
+                        .then(|| window.geometry())
+                })
+                .unwrap_or_default()
         }
     }
 
-    fn dismiss_popup(&mut self, surface: PopupSurface) {
-        if let Some(parent) = surface.get_parent().map(|parent| parent.surface.clone()) {
-            let _ = PopupManager::dismiss_popup(&parent, &PopupKind::from(surface));
-        }
-    }
-
-    fn popup_repositioned(&mut self, _surface: PopupSurface) {}
-
-    fn parent_geometry(&self, parent: &WlSurface) -> Rectangle<i32, smithay::utils::Logical> {
-        self.inner
-            .space
-            .elements()
-            .find_map(|window| {
-                (window.smithay_window().wl_surface().as_ref() == Some(parent))
-                    .then(|| window.geometry())
-            })
-            .unwrap_or_default()
-    }
+    smithay::delegate_input_method_manager!(SabiniwmState);
 }
-
-smithay::delegate_input_method_manager!(SabiniwmState);
 
 impl KeyboardShortcutsInhibitHandler for SabiniwmState {
     fn keyboard_shortcuts_inhibit_state(&mut self) -> &mut KeyboardShortcutsInhibitState {
