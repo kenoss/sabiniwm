@@ -193,10 +193,10 @@ impl SabiniwmState {
                 let source = event.source();
 
                 let horizontal_amount = event.amount(Axis::Horizontal).unwrap_or_else(|| {
-                    event.amount_v120(Axis::Horizontal).unwrap_or(0.0) * 3.0 / 120.
+                    event.amount_v120(Axis::Horizontal).unwrap_or(0.0) * 15.0 / 120.
                 });
                 let vertical_amount = event.amount(Axis::Vertical).unwrap_or_else(|| {
-                    event.amount_v120(Axis::Vertical).unwrap_or(0.0) * 3.0 / 120.
+                    event.amount_v120(Axis::Vertical).unwrap_or(0.0) * 15.0 / 120.
                 });
                 let horizontal_amount_discrete = event.amount_v120(Axis::Horizontal);
                 let vertical_amount_discrete = event.amount_v120(Axis::Vertical);
