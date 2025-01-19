@@ -427,11 +427,11 @@ enum SurfaceComposition {
     Compositor(GbmDrmCompositor),
 }
 
-struct SurfaceCompositorRenderResult {
+struct SurfaceCompositorRenderResult<'a> {
     rendered: bool,
     states: RenderElementStates,
     sync: Option<SyncPoint>,
-    damage: Option<Vec<Rectangle<i32, Physical>>>,
+    damage: Option<&'a Vec<Rectangle<i32, Physical>>>,
 }
 
 impl SurfaceComposition {
@@ -502,7 +502,7 @@ impl SurfaceComposition {
         renderer: &mut R,
         elements: &[E],
         clear_color: [f32; 4],
-    ) -> Result<SurfaceCompositorRenderResult, SwapBuffersError>
+    ) -> Result<SurfaceCompositorRenderResult<'_>, SwapBuffersError>
     where
         R: Renderer + Bind<Dmabuf> + Bind<Target> + Offscreen<Target> + ExportMem,
         <R as Renderer>::TextureId: 'static,
@@ -1446,7 +1446,12 @@ impl InnerState {
         R: ExportMem + Offscreen<GlesTexture> + smithay::backend::renderer::Bind<Dmabuf>,
         <R as Renderer>::Error: Into<smithay::backend::SwapBuffersError>,
     {
-        let res = surface.compositor.render_frame::<_, _, GlesTexture>(
+        let SurfaceCompositorRenderResult {
+            rendered,
+            states,
+            sync,
+            damage,
+        } = surface.compositor.render_frame::<_, _, GlesTexture>(
             renderer,
             &elements,
             clear_color,
@@ -1454,7 +1459,7 @@ impl InnerState {
 
         self.post_repaint(
             output,
-            &res.states,
+            &states,
             surface
                 .dmabuf_feedback
                 .as_ref()
@@ -1465,15 +1470,16 @@ impl InnerState {
             self.clock.now().into(),
         );
 
-        if res.rendered {
-            let output_presentation_feedback = self.take_presentation_feedback(output, &res.states);
+        if rendered {
+            let output_presentation_feedback = self.take_presentation_feedback(output, &states);
+            let damage = damage.cloned();
             surface
                 .compositor
-                .queue_frame(res.sync, res.damage, Some(output_presentation_feedback))
+                .queue_frame(sync, damage, Some(output_presentation_feedback))
                 .map_err(Into::<SwapBuffersError>::into)?;
         }
 
-        Ok(res.rendered)
+        Ok(rendered)
     }
 }
 
