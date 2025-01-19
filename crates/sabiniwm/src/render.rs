@@ -106,7 +106,7 @@ where
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug)]
 pub(crate) struct SurfaceDmabufFeedback<'a> {
     pub render_feedback: &'a DmabufFeedback,
     pub scanout_feedback: &'a DmabufFeedback,
@@ -286,7 +286,7 @@ impl InnerState {
                     throttle,
                     surface_primary_scanout_output,
                 );
-                if let Some(dmabuf_feedback) = dmabuf_feedback {
+                if let Some(dmabuf_feedback) = &dmabuf_feedback {
                     window.smithay_window().send_dmabuf_feedback(
                         output,
                         surface_primary_scanout_output,
@@ -322,7 +322,7 @@ impl InnerState {
             });
 
             layer_surface.send_frame(output, time, throttle, surface_primary_scanout_output);
-            if let Some(dmabuf_feedback) = dmabuf_feedback {
+            if let Some(dmabuf_feedback) = &dmabuf_feedback {
                 layer_surface.send_dmabuf_feedback(
                     output,
                     surface_primary_scanout_output,
