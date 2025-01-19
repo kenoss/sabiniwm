@@ -196,6 +196,8 @@ impl InputMethodHandler for SabiniwmState {
         }
     }
 
+    fn popup_repositioned(&mut self, _surface: PopupSurface) {}
+
     fn parent_geometry(&self, parent: &WlSurface) -> Rectangle<i32, smithay::utils::Logical> {
         self.inner
             .space
