@@ -33,6 +33,7 @@ impl CompositorHandler for SabiniwmState {
     fn compositor_state(&mut self) -> &mut CompositorState {
         &mut self.inner.compositor_state
     }
+
     fn client_compositor_state<'a>(&self, client: &'a Client) -> &'a CompositorClientState {
         if let Some(state) = client.get_data::<XWaylandClientData>() {
             return &state.compositor_state;
@@ -58,18 +59,21 @@ impl CompositorHandler for SabiniwmState {
             });
             if let Some(dmabuf) = maybe_dmabuf {
                 if let Ok((blocker, source)) = dmabuf.generate_blocker(Interest::READ) {
-                    let client = surface.client().unwrap();
-                    let res = state
-                        .inner
-                        .loop_handle
-                        .insert_source(source, move |_, _, state| {
+                    if let Some(client) = surface.client() {
+                        let res =
                             state
-                                .client_compositor_state(&client)
-                                .blocker_cleared(state, &state.inner.display_handle.clone());
-                            Ok(())
-                        });
-                    if res.is_ok() {
-                        add_blocker(surface, blocker);
+                                .inner
+                                .loop_handle
+                                .insert_source(source, move |_, _, state| {
+                                    state.client_compositor_state(&client).blocker_cleared(
+                                        state,
+                                        &state.inner.display_handle.clone(),
+                                    );
+                                    Ok(())
+                                });
+                        if res.is_ok() {
+                            add_blocker(surface, blocker);
+                        }
                     }
                 }
             }
