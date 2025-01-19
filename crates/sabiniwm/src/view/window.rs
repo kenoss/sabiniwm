@@ -381,7 +381,7 @@ mod window {
         impl<R> AsRenderElements<R> for Window
         where
             R: Renderer + ImportAll + ImportMem,
-            <R as Renderer>::TextureId: Texture + 'static,
+            <R as Renderer>::TextureId: Texture + Clone + 'static,
         {
             type RenderElement = WindowRenderElement<R>;
 
