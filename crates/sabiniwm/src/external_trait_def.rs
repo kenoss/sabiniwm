@@ -4,7 +4,7 @@ pub(crate) mod smithay {
             #[thin_delegate::external_trait_def(with_uses = true)]
             pub(crate) mod element {
                 use smithay::backend::renderer::element::{Id, Kind, UnderlyingStorage};
-                use smithay::backend::renderer::utils::CommitCounter;
+                use smithay::backend::renderer::utils::{CommitCounter, DamageSet};
                 use smithay::backend::renderer::Renderer;
                 use smithay::utils::{
                     Buffer as BufferCoords, Physical, Point, Rectangle, Scale, Transform,
@@ -33,14 +33,14 @@ pub(crate) mod smithay {
                         &self,
                         scale: Scale<f64>,
                         commit: Option<CommitCounter>,
-                    ) -> Vec<Rectangle<i32, Physical>> {
+                    ) -> DamageSet<i32, Physical> {
                         if commit != Some(self.current_commit()) {
-                            vec![Rectangle::from_loc_and_size(
+                            DamageSet::from_slice(&[Rectangle::from_loc_and_size(
                                 (0, 0),
                                 self.geometry(scale).size,
-                            )]
+                            )])
                         } else {
-                            vec![]
+                            DamageSet::default()
                         }
                     }
                     /// Get the opaque regions of the element relative to the element
