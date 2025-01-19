@@ -37,7 +37,7 @@ kenoss@ is 80%-ish satisfied daily use of it on private machine, Macbook Air.
 - [x] Fundamental features of tiling
 - [x] Layouts (Tall, Full, Select, Toggle, margin, border)
 - [ ] Floating windows
-- [ ] Screen lock
+- [x] Session lock (`ext-session-lock-v1`)
 - [ ] Screenshot/screencast
 - [ ] etc.
 
