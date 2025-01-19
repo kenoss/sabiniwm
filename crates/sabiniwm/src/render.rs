@@ -134,47 +134,56 @@ impl InnerState {
             .map(OutputRenderElement::from)
             .collect::<Vec<_>>();
 
-        use crate::session_lock::SessionLockState;
-        match self.session_lock_data.get_lock_surface(output) {
-            SessionLockState::NotLocked => {}
-            SessionLockState::Locked(output_assoc) => {
-                // If the session is locked, hide outputs by solid background and show a lock screen if exists.
-                // Note that a lock screen may not exist, for example, if it is not yet provided or the lock client is killed.
+        'body: {
+            use crate::session_lock::SessionLockState;
+            match self.session_lock_data.get_lock_surface(output) {
+                SessionLockState::NotLocked => {}
+                SessionLockState::Locked(output_assoc) => {
+                    // If the session is locked, hide outputs by solid background and show a lock screen if exists.
+                    // Note that a lock screen may not exist, for example, if it is not yet provided or the lock client is killed.
 
-                let output_scale =
-                    smithay::utils::Scale::from(output.current_scale().fractional_scale());
+                    let output_scale =
+                        smithay::utils::Scale::from(output.current_scale().fractional_scale());
 
-                if let Some(lock_surface) = &output_assoc.lock_surface {
-                    elements.extend(
-                        render_elements_from_surface_tree(
-                            renderer,
-                            lock_surface.wl_surface(),
+                    if let Some(lock_surface) = &output_assoc.lock_surface {
+                        elements.extend(
+                            render_elements_from_surface_tree(
+                                renderer,
+                                lock_surface.wl_surface(),
+                                (0, 0),
+                                output_scale,
+                                1.,
+                                Kind::Unspecified,
+                            )
+                            .into_iter()
+                            .map(OutputRenderElement::SessionLockSurface),
+                        );
+                    }
+
+                    elements.push(OutputRenderElement::SessionLockBackground(
+                        SolidColorRenderElement::from_buffer(
+                            &output_assoc.background,
                             (0, 0),
                             output_scale,
                             1.,
                             Kind::Unspecified,
-                        )
-                        .into_iter()
-                        .map(OutputRenderElement::SessionLockSurface),
-                    );
+                        ),
+                    ));
+
+                    #[cfg(not(feature = "debug_session_lock_client_dead"))]
+                    break 'body;
                 }
-
-                elements.push(OutputRenderElement::SessionLockBackground(
-                    SolidColorRenderElement::from_buffer(
-                        &output_assoc.background,
-                        (0, 0),
-                        output_scale,
-                        1.,
-                        Kind::Unspecified,
-                    ),
-                ));
             }
-        }
 
-        let space_elements =
-            smithay::desktop::space::space_render_elements(renderer, [&self.space], output, 1.0)
-                .expect("output without mode?");
-        elements.extend(space_elements.into_iter().map(OutputRenderElement::Space));
+            let space_elements = smithay::desktop::space::space_render_elements(
+                renderer,
+                [&self.space],
+                output,
+                1.0,
+            )
+            .expect("output without mode?");
+            elements.extend(space_elements.into_iter().map(OutputRenderElement::Space));
+        }
 
         (elements, CLEAR_COLOR)
     }
@@ -247,6 +256,9 @@ impl InnerState {
                         );
                     }
                 }
+
+                #[cfg(not(feature = "debug_session_lock_client_dead"))]
+                return;
             }
         }
 
@@ -339,13 +351,33 @@ impl InnerState {
 
         let mut output_presentation_feedback = OutputPresentationFeedback::new(output);
 
-        use crate::session_lock::SessionLockState;
-        match self.session_lock_data.get_lock_surface(output) {
-            SessionLockState::NotLocked => {}
-            SessionLockState::Locked(output_assoc) => {
-                if let Some(lock_surface) = &output_assoc.lock_surface {
-                    take_presentation_feedback_surface_tree(
-                        lock_surface.wl_surface(),
+        'body: {
+            use crate::session_lock::SessionLockState;
+            match self.session_lock_data.get_lock_surface(output) {
+                SessionLockState::NotLocked => {}
+                SessionLockState::Locked(output_assoc) => {
+                    if let Some(lock_surface) = &output_assoc.lock_surface {
+                        take_presentation_feedback_surface_tree(
+                            lock_surface.wl_surface(),
+                            &mut output_presentation_feedback,
+                            surface_primary_scanout_output,
+                            |surface, _| {
+                                surface_presentation_feedback_flags_from_states(
+                                    surface,
+                                    render_element_states,
+                                )
+                            },
+                        );
+                    }
+
+                    #[cfg(not(feature = "debug_session_lock_client_dead"))]
+                    break 'body;
+                }
+            }
+
+            for window in self.space.elements() {
+                if self.space.outputs_for_element(window).contains(output) {
+                    window.smithay_window().take_presentation_feedback(
                         &mut output_presentation_feedback,
                         surface_primary_scanout_output,
                         |surface, _| {
@@ -357,11 +389,10 @@ impl InnerState {
                     );
                 }
             }
-        }
 
-        for window in self.space.elements() {
-            if self.space.outputs_for_element(window).contains(output) {
-                window.smithay_window().take_presentation_feedback(
+            let map = smithay::desktop::layer_map_for_output(output);
+            for layer_surface in map.layers() {
+                layer_surface.take_presentation_feedback(
                     &mut output_presentation_feedback,
                     surface_primary_scanout_output,
                     |surface, _| {
@@ -372,17 +403,6 @@ impl InnerState {
                     },
                 );
             }
-        }
-
-        let map = smithay::desktop::layer_map_for_output(output);
-        for layer_surface in map.layers() {
-            layer_surface.take_presentation_feedback(
-                &mut output_presentation_feedback,
-                surface_primary_scanout_output,
-                |surface, _| {
-                    surface_presentation_feedback_flags_from_states(surface, render_element_states)
-                },
-            );
         }
 
         output_presentation_feedback
