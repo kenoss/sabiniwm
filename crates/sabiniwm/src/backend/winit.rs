@@ -316,7 +316,7 @@ impl SabiniwmStateWithConcreteBackend<'_, WinitBackend> {
 
             let (elements, clear_color) =
                 self.inner
-                    .output_elements(renderer, &self.backend.output, elements);
+                    .make_output_elements(renderer, &self.backend.output, elements);
             // TODO: Integrate it with the below `match`.
             match damage_tracker.render_output(renderer, age, &elements, clear_color) {
                 Ok(x) => Ok(x),

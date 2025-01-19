@@ -113,8 +113,7 @@ pub(crate) struct SurfaceDmabufFeedback<'a> {
 }
 
 impl InnerState {
-    // TODO: Make it a method.
-    pub(crate) fn output_elements<R>(
+    pub(crate) fn make_output_elements<R>(
         &self,
         renderer: &mut R,
         output: &Output,
@@ -180,7 +179,6 @@ impl InnerState {
         (elements, CLEAR_COLOR)
     }
 
-    // TODO: Make it a method.
     pub(crate) fn post_repaint(
         &self,
         output: &smithay::output::Output,
@@ -329,7 +327,6 @@ impl InnerState {
         }
     }
 
-    // TODO: Make it a method.
     pub(crate) fn take_presentation_feedback(
         &self,
         output: &smithay::output::Output,

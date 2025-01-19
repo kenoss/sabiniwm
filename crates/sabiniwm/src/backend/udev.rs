@@ -1276,10 +1276,10 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
         );
         let (elements, clear_color) =
             self.inner
-                .output_elements(&mut renderer, &output, additional_elements);
+                .make_output_elements(&mut renderer, &output, additional_elements);
         let result =
             self.inner
-                .render_surface(surface, &mut renderer, &output, elements, clear_color);
+                .render_surface_data(surface, &mut renderer, &output, elements, clear_color);
         let should_reschedule_render = match &result {
             Ok(has_rendered) => !has_rendered,
             Err(err) => {
@@ -1432,8 +1432,7 @@ where
 }
 
 impl InnerState {
-    // TODO: Make it a method.
-    fn render_surface<R>(
+    fn render_surface_data<R>(
         &self,
         surface: &mut SurfaceData,
         renderer: &mut R,
