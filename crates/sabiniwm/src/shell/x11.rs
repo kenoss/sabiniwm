@@ -10,9 +10,18 @@ use smithay::wayland::selection::primary_selection::{
     set_primary_selection,
 };
 use smithay::wayland::selection::SelectionTarget;
+use smithay::wayland::xwayland_shell::{XWaylandShellHandler, XWaylandShellState};
 use smithay::xwayland::xwm::{Reorder, ResizeEdge as X11ResizeEdge, XwmId};
 use smithay::xwayland::{X11Surface, X11Wm, XwmHandler};
 use std::os::unix::io::OwnedFd;
+
+impl XWaylandShellHandler for SabiniwmState {
+    fn xwayland_shell_state(&mut self) -> &mut XWaylandShellState {
+        &mut self.inner.xwayland_shell_state
+    }
+}
+
+smithay::delegate_xwayland_shell!(SabiniwmState);
 
 impl XwmHandler for SabiniwmState {
     fn xwm_state(&mut self, _xwm: XwmId) -> &mut X11Wm {

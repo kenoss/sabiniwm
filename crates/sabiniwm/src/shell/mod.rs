@@ -81,7 +81,7 @@ impl CompositorHandler for SabiniwmState {
     }
 
     fn commit(&mut self, surface: &WlSurface) {
-        X11Wm::commit_hook::<SabiniwmState>(surface);
+        X11Wm::commit_hook(self, surface);
 
         on_commit_buffer_handler::<Self>(surface);
         self.backend.early_import(surface);

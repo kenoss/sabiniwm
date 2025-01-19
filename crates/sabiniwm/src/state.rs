@@ -94,6 +94,7 @@ pub(crate) struct InnerState {
     pub xwayland_client: wayland_server::Client,
     pub xwm: Option<X11Wm>,
     pub xdisplay: Option<u32>,
+    pub xwayland_shell_state: smithay::wayland::xwayland_shell::XWaylandShellState,
 
     pub envvar: EnvVar,
     pub keymap: Keymap<Action>,
@@ -277,6 +278,9 @@ impl SabiniwmState {
 
             xwayland_client
         };
+        let xwayland_shell_state = smithay::wayland::xwayland_shell::XWaylandShellState::new::<Self>(
+            &display_handle.clone(),
+        );
 
         let keymap = config_delegate.make_keymap(backend.is_udev());
 
@@ -312,6 +316,7 @@ impl SabiniwmState {
                 xwayland_client,
                 xwm: None,
                 xdisplay: None,
+                xwayland_shell_state,
 
                 envvar,
                 keymap,
@@ -355,7 +360,6 @@ impl EventHandler<XWaylandEvent> for SabiniwmState {
             } => {
                 let mut wm = X11Wm::start_wm(
                     self.inner.loop_handle.clone(),
-                    self.inner.display_handle.clone(),
                     x11_socket,
                     self.inner.xwayland_client.clone(),
                 )
