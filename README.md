@@ -121,6 +121,7 @@ You can run it with udev backend in the following ways:
 ## TODO
 
 - smithay `d4780c5`: Consider to add `#[inline]` for derived operations.
+- smithay `f5aeb51`: Consider to add `#[inline]` for common operations.
 
 ## License
 
