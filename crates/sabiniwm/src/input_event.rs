@@ -228,6 +228,19 @@ impl SabiniwmState {
                 pointer.axis(self, frame);
                 pointer.frame(self);
             }
+            InputEvent::SwitchToggle { event } => {
+                use smithay::backend::input::{Switch, SwitchState, SwitchToggleEvent};
+
+                match (event.switch(), event.state()) {
+                    (Some(Switch::Lid), SwitchState::On) => {
+                        self.inner.config_delegate.on_lid_closed();
+                    }
+                    (Some(Switch::Lid), SwitchState::Off) => {
+                        self.inner.config_delegate.on_lid_opened();
+                    }
+                    _ => {}
+                }
+            }
             _ => {}
         }
 

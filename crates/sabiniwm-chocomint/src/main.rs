@@ -3,6 +3,10 @@
 
 #[allow(unused_imports)]
 #[macro_use]
+extern crate tracing;
+
+#[allow(unused_imports)]
+#[macro_use]
 extern crate maplit;
 
 use big_s::S;
@@ -164,6 +168,56 @@ impl ConfigDelegateUnstableI for Config {
         }));
 
         Keymap::new(keymap)
+    }
+
+    fn on_lid_closed(&self) {
+        info!("Config::on_lid_closed()");
+
+        fn get_xdg_config_home() -> Option<String> {
+            use std::collections::HashMap;
+
+            let envvars = std::env::vars().collect::<HashMap<_, _>>();
+            let path = match envvars.get("XDG_CONFIG_HOME") {
+                Some(path) => path.clone(),
+                None => match envvars.get("HOME") {
+                    Some(path) => "$HOME/.config".replace("$HOME", path),
+                    None => return None,
+                },
+            };
+            Some(path)
+        }
+
+        fn spawn_script() -> Option<()> {
+            const SCRIPT_PATH: &str = "$XDG_CONFIG_HOME/sabiniwm/on_lid_closed";
+
+            let xdg_config_home = get_xdg_config_home()?;
+            let path = SCRIPT_PATH.replace("$XDG_CONFIG_HOME", &xdg_config_home);
+
+            info!("Config::on_lid_closed(): exec {path}");
+            std::process::Command::new(path).spawn().ok()?;
+
+            Some(())
+        }
+
+        match spawn_script() {
+            Some(_) => {}
+            // For example, script was not found or not executable.
+            // Execute swaylock by default.
+            None => {
+                info!("Config::on_lid_closed(): exec default hook");
+                let _ = std::process::Command::new("swaylock")
+                    .args([
+                        "--color",
+                        "101010",
+                        "--show-keyboard-layout",
+                        "--disable-caps-lock-text",
+                    ])
+                    .spawn();
+                let _ = std::process::Command::new("systemctl")
+                    .args(["suspend"])
+                    .spawn();
+            }
+        }
     }
 }
 

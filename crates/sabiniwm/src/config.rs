@@ -61,6 +61,14 @@ pub trait ConfigDelegateUnstableI {
     fn config_input_device_on_added(&self, device: &mut libinput::Device) {
         unstable_default::config_input_device_on_added(device);
     }
+
+    fn on_lid_closed(&self) {
+        info!("ConfigDelegateUnstableI::on_lid_closed()");
+    }
+
+    fn on_lid_opened(&self) {
+        info!("ConfigDelegateUnstableI::on_lid_opened()");
+    }
 }
 
 #[derive(Debug)]
