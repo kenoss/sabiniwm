@@ -20,7 +20,7 @@ use smithay::wayland::seat::WaylandFocus;
 use smithay::wayland::shell::wlr_layer::{
     Layer, LayerSurface as WlrLayerSurface, WlrLayerShellHandler, WlrLayerShellState,
 };
-use smithay::xwayland::{X11Wm, XWaylandClientData};
+use smithay::xwayland::XWaylandClientData;
 
 mod x11;
 mod xdg;
@@ -81,8 +81,6 @@ impl CompositorHandler for SabiniwmState {
     }
 
     fn commit(&mut self, surface: &WlSurface) {
-        X11Wm::commit_hook(self, surface);
-
         on_commit_buffer_handler::<Self>(surface);
         self.backend.early_import(surface);
 
