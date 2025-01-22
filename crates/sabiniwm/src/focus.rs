@@ -19,12 +19,12 @@ impl smithay::utils::IsAlive for KeyboardFocusTarget {}
     external_trait_def = crate::external_trait_def::smithay::input::keyboard,
     scheme = |f| {
         match self {
-            Self::Window(w) => match w.underlying_surface() {
-                smithay::desktop::WindowSurface::Wayland(s) => f(s.wl_surface()),
-                smithay::desktop::WindowSurface::X11(s) => f(s),
+            Self::Window(x) => match x.underlying_surface() {
+                smithay::desktop::WindowSurface::Wayland(y) => f(y.wl_surface()),
+                smithay::desktop::WindowSurface::X11(y) => f(y),
             }
-            Self::LayerSurface(l) => f(l.wl_surface()),
-            Self::Popup(p) => f(p.wl_surface()),
+            Self::LayerSurface(x) => f(x.wl_surface()),
+            Self::Popup(x) => f(x.wl_surface()),
             Self::SessionLockSurface(x) => f(x),
         }
     }
@@ -34,9 +34,9 @@ impl smithay::input::keyboard::KeyboardTarget<SabiniwmState> for KeyboardFocusTa
 impl smithay::wayland::seat::WaylandFocus for KeyboardFocusTarget {
     fn wl_surface(&self) -> Option<WlSurface> {
         match self {
-            KeyboardFocusTarget::Window(w) => w.wl_surface(),
-            KeyboardFocusTarget::LayerSurface(l) => Some(l.wl_surface().clone()),
-            KeyboardFocusTarget::Popup(p) => Some(p.wl_surface().clone()),
+            KeyboardFocusTarget::Window(x) => x.wl_surface(),
+            KeyboardFocusTarget::LayerSurface(x) => Some(x.wl_surface().clone()),
+            KeyboardFocusTarget::Popup(x) => Some(x.wl_surface().clone()),
             KeyboardFocusTarget::SessionLockSurface(x) => Some(x.clone()),
         }
     }
@@ -52,14 +52,14 @@ pub enum PointerFocusTarget {
 impl From<KeyboardFocusTarget> for PointerFocusTarget {
     fn from(x: KeyboardFocusTarget) -> Self {
         match x {
-            KeyboardFocusTarget::Window(w) => match w.underlying_surface() {
-                WindowSurface::Wayland(s) => PointerFocusTarget::from(s.wl_surface().clone()),
-                WindowSurface::X11(s) => PointerFocusTarget::from(s.clone()),
+            KeyboardFocusTarget::Window(x) => match x.underlying_surface() {
+                WindowSurface::Wayland(y) => PointerFocusTarget::from(y.wl_surface().clone()),
+                WindowSurface::X11(y) => PointerFocusTarget::from(y.clone()),
             },
-            KeyboardFocusTarget::LayerSurface(l) => {
-                PointerFocusTarget::from(l.wl_surface().clone())
+            KeyboardFocusTarget::LayerSurface(x) => {
+                PointerFocusTarget::from(x.wl_surface().clone())
             }
-            KeyboardFocusTarget::Popup(p) => PointerFocusTarget::from(p.wl_surface().clone()),
+            KeyboardFocusTarget::Popup(x) => PointerFocusTarget::from(x.wl_surface().clone()),
             KeyboardFocusTarget::SessionLockSurface(x) => PointerFocusTarget::from(x),
         }
     }
