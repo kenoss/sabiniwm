@@ -8,7 +8,7 @@ impl SabiniwmState {
     pub fn surface_under(
         &self,
         pos: Point<f64, Logical>,
-    ) -> Option<(PointerFocusTarget, Point<i32, Logical>)> {
+    ) -> Option<(PointerFocusTarget, Point<f64, Logical>)> {
         let output = self.inner.space.outputs().find(|o| {
             let geometry = self.inner.space.output_geometry(o).unwrap();
             geometry.contains(pos.to_i32_round())
@@ -84,6 +84,6 @@ impl SabiniwmState {
         {
             under = Some(focus)
         };
-        under
+        under.map(|(focus_target, loc)| (focus_target, loc.to_f64()))
     }
 }
