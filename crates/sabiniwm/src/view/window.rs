@@ -104,6 +104,7 @@ mod window {
     use itertools::Itertools;
     use smithay::backend::renderer::element::solid::SolidColorBuffer;
     use smithay::desktop::space::SpaceElement;
+    use smithay::reexports::wayland_server;
     use smithay::utils::{IsAlive, Logical, Physical, Point, Rectangle, Scale, Size};
     use std::sync::{Arc, Mutex};
     use std::time::Duration;

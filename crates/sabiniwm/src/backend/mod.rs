@@ -2,6 +2,8 @@ pub mod udev;
 #[cfg(feature = "winit")]
 pub mod winit;
 
+use smithay::reexports::wayland_server;
+
 #[thin_delegate::register]
 pub(crate) trait DmabufHandlerDelegate: smithay::wayland::buffer::BufferHandler {
     fn dmabuf_state(&mut self) -> &mut smithay::wayland::dmabuf::DmabufState;

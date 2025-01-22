@@ -1519,7 +1519,6 @@ dependencies = [
  "thin_delegate",
  "thiserror",
  "tracing",
- "wayland-server",
  "x11rb 0.12.0",
  "xcursor",
  "xkbcommon",

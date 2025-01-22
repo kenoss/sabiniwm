@@ -18,6 +18,7 @@ use smithay::input::pointer::{CursorImageAttributes, CursorImageStatus};
 use smithay::output::{Mode, PhysicalProperties, Subpixel};
 use smithay::reexports::calloop::LoopHandle;
 use smithay::reexports::wayland_protocols::wp::presentation_time::server::wp_presentation_feedback;
+use smithay::reexports::wayland_server;
 use smithay::reexports::wayland_server::protocol::wl_surface;
 use smithay::utils::{IsAlive, Scale, Transform};
 use smithay::wayland::compositor;

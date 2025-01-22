@@ -303,7 +303,7 @@ pub(crate) mod smithay {
     pub(crate) mod wayland {
         #[thin_delegate::external_trait_def(with_uses = true)]
         pub(crate) mod buffer {
-            use wayland_server::protocol::wl_buffer;
+            use smithay::reexports::wayland_server::protocol::wl_buffer;
 
             #[thin_delegate::register]
             pub trait BufferHandler {
