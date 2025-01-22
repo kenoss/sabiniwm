@@ -67,10 +67,15 @@ pub(crate) mod smithay {
                         src: Rectangle<f64, BufferCoords>,
                         dst: Rectangle<i32, Physical>,
                         damage: &[Rectangle<i32, Physical>],
+                        opaque_regions: &[Rectangle<i32, Physical>],
                     ) -> Result<(), R::Error>;
 
                     /// Get the underlying storage of this element, may be used to optimize rendering (eg. drm planes)
-                    fn underlying_storage(&self, renderer: &mut R) -> Option<UnderlyingStorage> {
+                    #[inline]
+                    fn underlying_storage(
+                        &self,
+                        renderer: &mut R,
+                    ) -> Option<UnderlyingStorage<'_>> {
                         let _ = renderer;
                         None
                     }
