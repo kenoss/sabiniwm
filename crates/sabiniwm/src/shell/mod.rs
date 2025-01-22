@@ -53,7 +53,7 @@ impl CompositorHandler for SabiniwmState {
                     .buffer
                     .as_ref()
                     .and_then(|assignment| match assignment {
-                        BufferAssignment::NewBuffer(buffer) => get_dmabuf(buffer).ok(),
+                        BufferAssignment::NewBuffer(buffer) => get_dmabuf(buffer).ok().cloned(),
                         _ => None,
                     })
             });
