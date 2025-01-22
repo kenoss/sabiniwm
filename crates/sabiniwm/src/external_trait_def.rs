@@ -4,7 +4,7 @@ pub(crate) mod smithay {
             #[thin_delegate::external_trait_def(with_uses = true)]
             pub(crate) mod element {
                 use smithay::backend::renderer::element::{Id, Kind, UnderlyingStorage};
-                use smithay::backend::renderer::utils::{CommitCounter, DamageSet};
+                use smithay::backend::renderer::utils::{CommitCounter, DamageSet, OpaqueRegions};
                 use smithay::backend::renderer::Renderer;
                 use smithay::utils::{
                     Buffer as BufferCoords, Physical, Point, Rectangle, Scale, Transform,
@@ -44,8 +44,8 @@ pub(crate) mod smithay {
                         }
                     }
                     /// Get the opaque regions of the element relative to the element
-                    fn opaque_regions(&self, _scale: Scale<f64>) -> Vec<Rectangle<i32, Physical>> {
-                        vec![]
+                    fn opaque_regions(&self, _scale: Scale<f64>) -> OpaqueRegions<i32, Physical> {
+                        OpaqueRegions::default()
                     }
                     /// Returns an alpha value the element should be drawn with regardless of any
                     /// already encoded alpha in it's underlying representation.
