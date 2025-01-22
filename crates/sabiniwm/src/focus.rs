@@ -1,7 +1,8 @@
 use crate::state::SabiniwmState;
 use smithay::desktop::WindowSurface;
 use smithay::input::Seat;
-use smithay::reexports::wayland_server::protocol::wl_surface::WlSurface;
+use smithay::reexports::wayland_server;
+use std::borrow::Cow;
 
 #[derive(derive_more::From, Debug, Clone, PartialEq)]
 #[thin_delegate::register]
@@ -9,7 +10,7 @@ pub enum KeyboardFocusTarget {
     Window(smithay::desktop::Window),
     LayerSurface(smithay::desktop::LayerSurface),
     Popup(smithay::desktop::PopupKind),
-    SessionLockSurface(WlSurface),
+    SessionLockSurface(wayland_server::protocol::wl_surface::WlSurface),
 }
 
 #[thin_delegate::fill_delegate(external_trait_def = crate::external_trait_def::smithay::utils)]
@@ -32,12 +33,12 @@ impl smithay::utils::IsAlive for KeyboardFocusTarget {}
 impl smithay::input::keyboard::KeyboardTarget<SabiniwmState> for KeyboardFocusTarget {}
 
 impl smithay::wayland::seat::WaylandFocus for KeyboardFocusTarget {
-    fn wl_surface(&self) -> Option<WlSurface> {
+    fn wl_surface(&self) -> Option<Cow<'_, wayland_server::protocol::wl_surface::WlSurface>> {
         match self {
             KeyboardFocusTarget::Window(x) => x.wl_surface(),
-            KeyboardFocusTarget::LayerSurface(x) => Some(x.wl_surface().clone()),
-            KeyboardFocusTarget::Popup(x) => Some(x.wl_surface().clone()),
-            KeyboardFocusTarget::SessionLockSurface(x) => Some(x.clone()),
+            KeyboardFocusTarget::LayerSurface(x) => Some(Cow::Borrowed(x.wl_surface())),
+            KeyboardFocusTarget::Popup(x) => Some(Cow::Borrowed(x.wl_surface())),
+            KeyboardFocusTarget::SessionLockSurface(x) => Some(Cow::Borrowed(x)),
         }
     }
 }
@@ -45,7 +46,7 @@ impl smithay::wayland::seat::WaylandFocus for KeyboardFocusTarget {
 #[derive(derive_more::From, Debug, Clone, PartialEq)]
 #[thin_delegate::register]
 pub enum PointerFocusTarget {
-    WlSurface(smithay::reexports::wayland_server::protocol::wl_surface::WlSurface),
+    WlSurface(wayland_server::protocol::wl_surface::WlSurface),
     X11Surface(smithay::xwayland::X11Surface),
 }
 

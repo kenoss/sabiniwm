@@ -139,13 +139,7 @@ impl SabiniwmState {
         self.inner
             .space
             .elements()
-            .find(|window| {
-                window
-                    .smithay_window()
-                    .wl_surface()
-                    .map(|s| s == *surface)
-                    .unwrap_or(false)
-            })
+            .find(|window| window.smithay_window().wl_surface().as_deref() == Some(surface))
             .cloned()
     }
 }

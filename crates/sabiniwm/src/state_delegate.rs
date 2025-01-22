@@ -206,7 +206,7 @@ mod input_method_handler {
                 .space
                 .elements()
                 .find_map(|window| {
-                    (window.smithay_window().wl_surface().as_ref() == Some(parent))
+                    (window.smithay_window().wl_surface().as_deref() == Some(parent))
                         .then(|| window.geometry())
                 })
                 .unwrap_or_default()
@@ -237,9 +237,8 @@ impl PointerConstraintsHandler for SabiniwmState {
         // XXX region
         if pointer
             .current_focus()
-            .and_then(|x| x.wl_surface())
-            .as_ref()
-            == Some(surface)
+            .map(|x| x.wl_surface().as_deref() == Some(surface))
+            .unwrap_or(false)
         {
             with_pointer_constraint(surface, pointer, |constraint| {
                 constraint.unwrap().activate();
@@ -281,13 +280,7 @@ impl XdgActivationHandler for SabiniwmState {
                 .inner
                 .space
                 .elements()
-                .find(|window| {
-                    window
-                        .smithay_window()
-                        .wl_surface()
-                        .map(|s| s == surface)
-                        .unwrap_or(false)
-                })
+                .find(|window| window.smithay_window().wl_surface().as_deref() == Some(&surface))
                 .cloned();
             if let Some(window) = w {
                 self.inner.space.raise_element(&window, true);
@@ -445,7 +438,7 @@ impl XWaylandKeyboardGrabHandler for SabiniwmState {
             .inner
             .space
             .elements()
-            .find(|window| window.smithay_window().wl_surface().as_ref() == Some(surface))?;
+            .find(|window| window.smithay_window().wl_surface().as_deref() == Some(surface))?;
         Some(KeyboardFocusTarget::Window(window.smithay_window().clone()))
     }
 }

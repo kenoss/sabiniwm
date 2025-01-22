@@ -325,7 +325,7 @@ pub(crate) mod smithay {
                 ///
                 /// *Note*: This has to return `Some`, if `same_client_as` can return true
                 /// for any provided `ObjectId`
-                fn wl_surface(&self) -> Option<wl_surface::WlSurface>;
+                fn wl_surface(&self) -> Option<Cow<'_, wl_surface::WlSurface>>;
                 /// Returns true, if the underlying wayland object originates from
                 /// the same client connection as the provided `ObjectId`.
                 ///
