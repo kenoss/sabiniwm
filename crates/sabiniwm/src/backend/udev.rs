@@ -57,7 +57,6 @@ use smithay::wayland::drm_lease::{
     DrmLease, DrmLeaseBuilder, DrmLeaseHandler, DrmLeaseRequest, DrmLeaseState, LeaseRejected,
 };
 use smithay_drm_extras::drm_scanner::{DrmScanEvent, DrmScanner};
-use smithay_drm_extras::edid::EdidInfo;
 use std::collections::hash_map::HashMap;
 use std::collections::HashSet;
 use std::path::Path;
@@ -828,9 +827,16 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
                 })
                 .unwrap_or(false);
 
-            let (make, model) = EdidInfo::for_connector(&device.drm, connector.handle())
-                .map(|info| (info.manufacturer, info.model))
-                .unwrap_or_else(|| ("Unknown".into(), "Unknown".into()));
+            let display_info =
+                smithay_drm_extras::display_info::for_connector(&device.drm, connector.handle());
+            let make = display_info
+                .as_ref()
+                .and_then(|info| info.make())
+                .unwrap_or_else(|| "Unknown".into());
+            let model = display_info
+                .as_ref()
+                .and_then(|info| info.model())
+                .unwrap_or_else(|| "Unknown".into());
 
             if non_desktop {
                 info!(
