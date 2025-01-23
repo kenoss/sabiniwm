@@ -34,7 +34,7 @@ xkbcommon = "0.7.0"
 
 [dependencies.smithay]
 git = "https://github.com/Smithay/smithay"
-rev = "22f44c1"
+rev = "b7aebdb"
 default-features = false
 features = [
     "backend_winit",
