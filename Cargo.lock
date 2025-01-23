@@ -1747,12 +1747,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "scan_fmt"
-version = "0.2.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b53b0a5db882a8e2fdaae0a43f7b39e7e9082389e978398bdf223a55b581248"
-
-[[package]]
 name = "scoped-tls"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1829,7 +1823,7 @@ checksum = "3c5e1a9a646d36c3599cd173a41282daf47c44583ad367b8e6837255952e5c67"
 [[package]]
 name = "smithay"
 version = "0.3.0"
-source = "git+https://github.com/Smithay/smithay?rev=566e176#566e176b447be367365d4312eee9bee7ae8f1dea"
+source = "git+https://github.com/Smithay/smithay?rev=b059519#b059519a4e0725eb12bedd98cf920d984df380d7"
 dependencies = [
  "appendlist",
  "ash",
@@ -1848,7 +1842,6 @@ dependencies = [
  "gl_generator",
  "indexmap",
  "input",
- "lazy_static",
  "libc",
  "libloading",
  "libseat",
@@ -1858,7 +1851,6 @@ dependencies = [
  "profiling",
  "rand",
  "rustix",
- "scan_fmt",
  "scopeguard",
  "smallvec",
  "tempfile",
