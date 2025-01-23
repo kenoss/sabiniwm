@@ -78,7 +78,7 @@ where
 
 impl<T, R> AsRenderElements<R> for PointerElement
 where
-    T: Texture + Clone + 'static,
+    T: Texture + Clone + Send + 'static,
     R: Renderer<TextureId = T> + ImportAll + ImportMem,
 {
     type RenderElement = PointerRenderElement<R>;

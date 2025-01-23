@@ -1365,7 +1365,7 @@ fn make_additional_elements<R>(
 ) -> Vec<CustomRenderElement<R>>
 where
     R: Renderer + ImportAll + ImportMem,
-    R::TextureId: Clone + 'static,
+    R::TextureId: Clone + Send + 'static,
 {
     let output_geometry = space.output_geometry(output).unwrap();
     let scale = Scale::from(output.current_scale().fractional_scale());
