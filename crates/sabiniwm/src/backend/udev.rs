@@ -384,7 +384,7 @@ impl DrmLeaseHandler for SabiniwmState {
                     })
                     .ok_or_else(LeaseRejected::default)?;
                 builder.add_plane(primary_plane.handle, primary_plane_claim);
-                if let Some((cursor, claim)) = planes.cursor.and_then(|plane| {
+                if let Some((cursor, claim)) = planes.cursor.iter().find_map(|plane| {
                     backend
                         .drm
                         .claim_plane(plane.handle, *crtc)
