@@ -453,6 +453,8 @@ impl XdgForeignHandler for SabiniwmState {
 
 smithay::delegate_xdg_foreign!(SabiniwmState);
 
+smithay::delegate_single_pixel_buffer!(SabiniwmState);
+
 impl smithay::wayland::dmabuf::DmabufHandler for SabiniwmState {
     fn dmabuf_state(&mut self) -> &mut smithay::wayland::dmabuf::DmabufState {
         self.backend.dmabuf_state()

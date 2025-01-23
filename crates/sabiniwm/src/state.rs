@@ -30,6 +30,7 @@ use smithay::wayland::selection::wlr_data_control::DataControlState;
 use smithay::wayland::shell::wlr_layer::WlrLayerShellState;
 use smithay::wayland::shell::xdg::XdgShellState;
 use smithay::wayland::shm::ShmState;
+use smithay::wayland::single_pixel_buffer::SinglePixelBufferState;
 use smithay::wayland::socket::ListeningSocketSource;
 use smithay::wayland::tablet_manager::TabletManagerState;
 use smithay::wayland::text_input::TextInputManagerState;
@@ -80,6 +81,8 @@ pub(crate) struct InnerState {
     pub xdg_activation_state: XdgActivationState,
     pub xdg_shell_state: XdgShellState,
     pub xdg_foreign_state: XdgForeignState,
+    #[allow(unused)]
+    pub single_pixel_buffer_state: SinglePixelBufferState,
     pub session_lock_data: crate::session_lock::SessionLockData,
 
     pub dnd_icon: Option<wayland_server::protocol::wl_surface::WlSurface>,
@@ -220,6 +223,7 @@ impl SabiniwmState {
         let xdg_activation_state = XdgActivationState::new::<Self>(&display_handle);
         let xdg_shell_state = XdgShellState::new::<Self>(&display_handle);
         let xdg_foreign_state = XdgForeignState::new::<Self>(&display_handle);
+        let single_pixel_buffer_state = SinglePixelBufferState::new::<Self>(&display_handle);
         let session_lock_data = crate::session_lock::SessionLockData::new(&display_handle);
         TextInputManagerState::new::<Self>(&display_handle);
         InputMethodManagerState::new::<Self, _>(&display_handle, |_client| true);
@@ -306,6 +310,7 @@ impl SabiniwmState {
                 xdg_activation_state,
                 xdg_shell_state,
                 xdg_foreign_state,
+                single_pixel_buffer_state,
                 session_lock_data,
                 dnd_icon: None,
                 cursor_status,
