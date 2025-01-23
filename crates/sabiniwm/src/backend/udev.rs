@@ -10,6 +10,7 @@ use crate::view::window::WindowRenderElement;
 use crate::wl_global::WlGlobal;
 use eyre::WrapErr;
 use smithay::backend::allocator::dmabuf::Dmabuf;
+use smithay::backend::allocator::format::FormatSet;
 use smithay::backend::allocator::gbm::{GbmAllocator, GbmBufferFlags, GbmDevice};
 use smithay::backend::allocator::Fourcc;
 use smithay::backend::drm::compositor::DrmCompositor;
@@ -265,7 +266,7 @@ impl BackendI for UdevBackend {
         }
 
         // init dmabuf support with format list from selected render node
-        let dmabuf_formats = renderer.dmabuf_formats().collect::<Vec<_>>();
+        let dmabuf_formats = renderer.dmabuf_formats();
         let default_feedback =
             DmabufFeedbackBuilder::new(self.selected_render_node.dev_id(), dmabuf_formats)
                 .build()?;
@@ -618,20 +619,15 @@ fn get_surface_dmabuf_feedback(
     let primary_formats = gpus
         .single_renderer(&selected_render_node)
         .ok()?
-        .dmabuf_formats()
-        .collect::<HashSet<_>>();
+        .dmabuf_formats();
 
-    let render_formats = gpus
-        .single_renderer(&render_node)
-        .ok()?
-        .dmabuf_formats()
-        .collect::<HashSet<_>>();
+    let render_formats = gpus.single_renderer(&render_node).ok()?.dmabuf_formats();
 
     let all_render_formats = primary_formats
         .iter()
         .chain(render_formats.iter())
         .copied()
-        .collect::<HashSet<_>>();
+        .collect::<FormatSet>();
 
     let surface = composition.surface();
     let planes = surface.planes().clone();
@@ -644,10 +640,10 @@ fn get_surface_dmabuf_feedback(
         .formats
         .into_iter()
         .chain(planes.overlay.into_iter().flat_map(|p| p.formats))
-        .collect::<HashSet<_>>()
+        .collect::<FormatSet>()
         .intersection(&all_render_formats)
         .copied()
-        .collect::<Vec<_>>();
+        .collect::<FormatSet>();
 
     let builder = DmabufFeedbackBuilder::new(selected_render_node.dev_id(), primary_formats);
     let render_feedback = builder

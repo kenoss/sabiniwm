@@ -162,7 +162,7 @@ impl BackendI for WinitBackend {
             // Note: egl on Mesa requires either v4 or wl_drm (initialized with bind_wl_display).
             self.dmabuf_state.create_global::<SabiniwmState>(
                 &inner.display_handle,
-                self.backend.renderer().dmabuf_formats().collect::<Vec<_>>(),
+                self.backend.renderer().dmabuf_formats(),
             )
         };
         self.dmabuf_global.set(dmabuf_global).unwrap();
