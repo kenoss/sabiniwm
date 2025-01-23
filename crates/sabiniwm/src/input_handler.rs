@@ -39,8 +39,7 @@ impl SabiniwmState {
 
         let layers = layer_map_for_output(output);
 
-        let mut under = None;
-        if let Some(focus) = layers
+        if let ret @ Some(_) = layers
             .layer_under(WlrLayer::Overlay, pos)
             .or_else(|| layers.layer_under(WlrLayer::Top, pos))
             .and_then(|layer| {
@@ -55,8 +54,10 @@ impl SabiniwmState {
                     })
             })
         {
-            under = Some(focus)
-        } else if let Some(focus) = self
+            return ret;
+        }
+
+        if let ret @ Some(_) = self
             .inner
             .space
             .element_under(pos)
@@ -67,8 +68,10 @@ impl SabiniwmState {
             })
             .map(|(focus_target, loc)| (focus_target, loc.to_f64()))
         {
-            under = Some(focus)
-        } else if let Some(focus) = layers
+            return ret;
+        }
+
+        if let ret @ Some(_) = layers
             .layer_under(WlrLayer::Bottom, pos)
             .or_else(|| layers.layer_under(WlrLayer::Background, pos))
             .and_then(|layer| {
@@ -86,8 +89,9 @@ impl SabiniwmState {
                     })
             })
         {
-            under = Some(focus)
-        };
-        under
+            return ret;
+        }
+
+        None
     }
 }
