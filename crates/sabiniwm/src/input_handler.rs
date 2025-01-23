@@ -13,7 +13,13 @@ impl SabiniwmState {
             let geometry = self.inner.space.output_geometry(o).unwrap();
             geometry.contains(pos.to_i32_round())
         })?;
-        let output_geo = self.inner.space.output_geometry(output).unwrap();
+        let output_loc = self
+            .inner
+            .space
+            .output_geometry(output)
+            .unwrap()
+            .loc
+            .to_f64();
 
         use crate::session_lock::SessionLockState;
         match self.inner.session_lock_data.get_lock_surface(output) {
@@ -38,16 +44,13 @@ impl SabiniwmState {
             .layer_under(WlrLayer::Overlay, pos)
             .or_else(|| layers.layer_under(WlrLayer::Top, pos))
             .and_then(|layer| {
-                let layer_loc = layers.layer_geometry(layer).unwrap().loc;
+                let layer_loc = layers.layer_geometry(layer).unwrap().loc.to_f64();
                 layer
-                    .surface_under(
-                        pos - output_geo.loc.to_f64() - layer_loc.to_f64(),
-                        WindowSurfaceType::ALL,
-                    )
+                    .surface_under(pos - output_loc - layer_loc, WindowSurfaceType::ALL)
                     .map(|(surface, loc)| {
                         (
                             PointerFocusTarget::from(surface),
-                            loc + layer_loc + output_geo.loc,
+                            loc.to_f64() + layer_loc + output_loc,
                         )
                     })
             })
@@ -62,28 +65,29 @@ impl SabiniwmState {
                     .surface_under(pos - loc.to_f64(), WindowSurfaceType::ALL)
                     .map(|(surface, surf_loc)| (surface.into(), surf_loc + loc))
             })
+            .map(|(focus_target, loc)| (focus_target, loc.to_f64()))
         {
             under = Some(focus)
         } else if let Some(focus) = layers
             .layer_under(WlrLayer::Bottom, pos)
             .or_else(|| layers.layer_under(WlrLayer::Background, pos))
             .and_then(|layer| {
-                let layer_loc = layers.layer_geometry(layer).unwrap().loc;
+                let layer_loc = layers.layer_geometry(layer).unwrap().loc.to_f64();
                 layer
                     .surface_under(
-                        pos - output_geo.loc.to_f64() - layer_loc.to_f64(),
+                        pos - output_loc - layer_loc.to_f64(),
                         WindowSurfaceType::ALL,
                     )
                     .map(|(surface, loc)| {
                         (
                             PointerFocusTarget::from(surface),
-                            loc + layer_loc + output_geo.loc,
+                            loc.to_f64() + layer_loc + output_loc,
                         )
                     })
             })
         {
             under = Some(focus)
         };
-        under.map(|(focus_target, loc)| (focus_target, loc.to_f64()))
+        under
     }
 }
