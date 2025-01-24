@@ -95,6 +95,29 @@ impl CompositorHandler for SabiniwmState {
             }
         }
         self.inner.popups.commit(surface);
+
+        use smithay::input::pointer::{CursorImageStatus, CursorImageSurfaceData};
+        if matches!(&self.inner.cursor_status, CursorImageStatus::Surface(cursor_surface) if cursor_surface == surface)
+        {
+            with_states(surface, |states| {
+                let cursor_image_attributes = states.data_map.get::<CursorImageSurfaceData>();
+
+                if let Some(mut cursor_image_attributes) =
+                    cursor_image_attributes.map(|attrs| attrs.lock().unwrap())
+                {
+                    let buffer_delta = states
+                        .cached_state
+                        .get::<SurfaceAttributes>()
+                        .current()
+                        .buffer_delta
+                        .take();
+                    if let Some(buffer_delta) = buffer_delta {
+                        trace!(hotspot = ?cursor_image_attributes.hotspot, ?buffer_delta, "decrementing cursor hotspot");
+                        cursor_image_attributes.hotspot -= buffer_delta;
+                    }
+                }
+            });
+        }
     }
 }
 
