@@ -1,6 +1,6 @@
 use eyre::eyre;
 use itertools::Itertools;
-use smithay::input::keyboard::{KeysymHandle, XkbContextHandler};
+use smithay::input::keyboard::KeysymHandle;
 use std::collections::{HashMap, HashSet};
 use xkbcommon::xkb::{self, Keysym};
 
