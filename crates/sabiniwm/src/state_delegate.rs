@@ -81,7 +81,7 @@ impl ClientDndGrabHandler for SabiniwmState {
         self.inner.dnd_icon = icon.map(|surface| DndIcon { surface, offset });
     }
 
-    fn dropped(&mut self, _seat: Seat<Self>) {
+    fn dropped(&mut self, _target: Option<WlSurface>, _validated: bool, _seat: Seat<Self>) {
         self.inner.dnd_icon = None;
     }
 }
