@@ -42,9 +42,13 @@ impl KeySeq {
 
     pub fn extract(keysym_handle: &KeysymHandle<'_>) -> Self {
         fn get(keysym_handle: &KeysymHandle<'_>, s: &str) -> bool {
-            keysym_handle
-                .state()
-                .mod_name_is_active(s, xkb::STATE_MODS_EFFECTIVE)
+            // Safety: We don't clone `&xkb::State` here.
+            unsafe {
+                keysym_handle
+                    .xkb()
+                    .state()
+                    .mod_name_is_active(s, xkb::STATE_MODS_EFFECTIVE)
+            }
         }
 
         // It would be nice to use `xkb::State.serialize_mods`, but it is not guaranteed that the indice are fixed.
