@@ -1,5 +1,6 @@
 use crate::backend::BackendI;
 use crate::state::SabiniwmState;
+use crate::view::window::Window;
 use crate::ClientState;
 use smithay::backend::renderer::utils::on_commit_buffer_handler;
 use smithay::desktop::{layer_map_for_output, LayerSurface};
@@ -133,6 +134,8 @@ impl CompositorHandler for SabiniwmState {
                 dnd_icon.offset += buffer_delta;
             });
         }
+
+        ensure_initial_configure(surface, &self.inner.space, &mut self.inner.popups)
     }
 }
 
@@ -184,4 +187,116 @@ impl SabiniwmState {
 #[derive(Default)]
 pub struct SurfaceData {
     pub geometry: Option<Rectangle<i32, Logical>>,
+}
+
+fn ensure_initial_configure(
+    surface: &WlSurface,
+    space: &smithay::desktop::Space<Window>,
+    popups: &mut smithay::desktop::PopupManager,
+) {
+    use smithay::desktop::{PopupKind, WindowSurfaceType};
+    use smithay::wayland::compositor::{with_surface_tree_upward, TraversalAction};
+    use smithay::wayland::shell::wlr_layer::LayerSurfaceData;
+    use smithay::wayland::shell::xdg::{XdgPopupSurfaceData, XdgToplevelSurfaceData};
+    use std::cell::RefCell;
+
+    with_surface_tree_upward(
+        surface,
+        (),
+        |_, _, _| TraversalAction::DoChildren(()),
+        |_, states, _| {
+            states
+                .data_map
+                .insert_if_missing(|| RefCell::new(SurfaceData::default()));
+        },
+        |_, _, _| true,
+    );
+
+    if let Some(window) = space
+        .elements()
+        .find(|window| {
+            window
+                .smithay_window()
+                .wl_surface()
+                .map(|s| &*s == surface)
+                .unwrap_or(false)
+        })
+        .cloned()
+    {
+        // send the initial configure if relevant
+        #[cfg_attr(not(feature = "xwayland"), allow(irrefutable_let_patterns))]
+        if let Some(toplevel) = window.smithay_window().toplevel() {
+            let initial_configure_sent = with_states(surface, |states| {
+                states
+                    .data_map
+                    .get::<XdgToplevelSurfaceData>()
+                    .unwrap()
+                    .lock()
+                    .unwrap()
+                    .initial_configure_sent
+            });
+            if !initial_configure_sent {
+                toplevel.send_configure();
+            }
+        }
+
+        return;
+    }
+
+    if let Some(popup) = popups.find_popup(surface) {
+        let popup = match popup {
+            PopupKind::Xdg(ref popup) => popup,
+            // Doesn't require configure
+            PopupKind::InputMethod(ref _input_popup) => {
+                return;
+            }
+        };
+
+        let initial_configure_sent = with_states(surface, |states| {
+            states
+                .data_map
+                .get::<XdgPopupSurfaceData>()
+                .unwrap()
+                .lock()
+                .unwrap()
+                .initial_configure_sent
+        });
+        if !initial_configure_sent {
+            // NOTE: This should never fail as the initial configure is always
+            // allowed.
+            popup.send_configure().expect("initial configure failed");
+        }
+
+        return;
+    };
+
+    if let Some(output) = space.outputs().find(|o| {
+        let map = layer_map_for_output(o);
+        map.layer_for_surface(surface, WindowSurfaceType::TOPLEVEL)
+            .is_some()
+    }) {
+        let initial_configure_sent = with_states(surface, |states| {
+            states
+                .data_map
+                .get::<LayerSurfaceData>()
+                .unwrap()
+                .lock()
+                .unwrap()
+                .initial_configure_sent
+        });
+
+        let mut map = layer_map_for_output(output);
+
+        // arrange the layers before sending the initial configure
+        // to respect any size the client may have sent
+        map.arrange();
+        // send the initial configure if relevant
+        if !initial_configure_sent {
+            let layer = map
+                .layer_for_surface(surface, WindowSurfaceType::TOPLEVEL)
+                .unwrap();
+
+            layer.layer_surface().send_configure();
+        }
+    };
 }
