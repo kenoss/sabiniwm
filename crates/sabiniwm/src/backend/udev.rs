@@ -1402,7 +1402,7 @@ where
     let mut elements: Vec<CustomRenderElement<_>> = Vec::new();
 
     if output_geometry.to_f64().contains(pointer_location) {
-        let cursor_hotspot = if let CursorImageStatus::Surface(ref surface) = cursor_status {
+        let cursor_hotspot = if let CursorImageStatus::Surface(surface) = cursor_status {
             compositor::with_states(surface, |states| {
                 states
                     .data_map
@@ -1424,31 +1424,35 @@ where
         // draw the cursor as relevant
         {
             // reset the cursor if the surface is no longer alive
-            let mut reset = false;
-            if let CursorImageStatus::Surface(ref surface) = *cursor_status {
-                reset = !surface.alive();
-            }
-            if reset {
+            let should_reset = if let CursorImageStatus::Surface(surface) = cursor_status {
+                !surface.alive()
+            } else {
+                false
+            };
+            if should_reset {
                 *cursor_status = CursorImageStatus::default_named();
             }
 
             pointer_element.set_status(cursor_status.clone());
+
+            elements.extend(pointer_element.render_elements(
+                renderer,
+                cursor_pos_scaled,
+                scale,
+                1.0,
+            ));
         }
 
-        elements.extend(pointer_element.render_elements(renderer, cursor_pos_scaled, scale, 1.0));
-
         // draw the dnd icon if applicable
-        {
-            if let Some(wl_surface) = dnd_icon.as_ref() {
-                if wl_surface.alive() {
-                    elements.extend(AsRenderElements::<R>::render_elements(
-                        &SurfaceTree::from_surface(wl_surface),
-                        renderer,
-                        cursor_pos_scaled,
-                        scale,
-                        1.0,
-                    ));
-                }
+        if let Some(wl_surface) = dnd_icon.as_ref() {
+            if wl_surface.alive() {
+                elements.extend(AsRenderElements::<R>::render_elements(
+                    &SurfaceTree::from_surface(wl_surface),
+                    renderer,
+                    cursor_pos_scaled,
+                    scale,
+                    1.0,
+                ));
             }
         }
     }
