@@ -60,8 +60,27 @@ impl ClientDndGrabHandler for SabiniwmState {
         icon: Option<WlSurface>,
         _seat: Seat<Self>,
     ) {
-        self.inner.dnd_icon = icon;
+        use crate::state::DndIcon;
+        use smithay::input::pointer::CursorImageSurfaceData;
+        use smithay::utils::Point;
+
+        let offset = if let CursorImageStatus::Surface(ref surface) = self.inner.cursor_status {
+            with_states(surface, |states| {
+                let hotspot = states
+                    .data_map
+                    .get::<CursorImageSurfaceData>()
+                    .unwrap()
+                    .lock()
+                    .unwrap()
+                    .hotspot;
+                Point::from((-hotspot.x, -hotspot.y))
+            })
+        } else {
+            (0, 0).into()
+        };
+        self.inner.dnd_icon = icon.map(|surface| DndIcon { surface, offset });
     }
+
     fn dropped(&mut self, _seat: Seat<Self>) {
         self.inner.dnd_icon = None;
     }

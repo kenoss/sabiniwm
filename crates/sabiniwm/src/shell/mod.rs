@@ -118,6 +118,21 @@ impl CompositorHandler for SabiniwmState {
                 }
             });
         }
+
+        if matches!(&self.inner.dnd_icon, Some(icon) if &icon.surface == surface) {
+            let dnd_icon = self.inner.dnd_icon.as_mut().unwrap();
+            with_states(&dnd_icon.surface, |states| {
+                let buffer_delta = states
+                    .cached_state
+                    .get::<SurfaceAttributes>()
+                    .current()
+                    .buffer_delta
+                    .take()
+                    .unwrap_or_default();
+                trace!(offset = ?dnd_icon.offset, ?buffer_delta, "moving dnd offset");
+                dnd_icon.offset += buffer_delta;
+            });
+        }
     }
 }
 

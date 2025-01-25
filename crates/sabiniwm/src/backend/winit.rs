@@ -280,8 +280,7 @@ impl SabiniwmStateWithConcreteBackend<'_, WinitBackend> {
             } else {
                 (0, 0).into()
             };
-        let cursor_pos = self.inner.pointer.current_location() - cursor_hotspot.to_f64();
-        let cursor_pos_scaled = cursor_pos.to_physical(scale).to_i32_round();
+        let cursor_pos = self.inner.pointer.current_location();
 
         let render_res = self.backend.backend.bind().and_then(|_| {
             let age = if *full_redraw > 0 {
@@ -294,23 +293,26 @@ impl SabiniwmStateWithConcreteBackend<'_, WinitBackend> {
 
             let mut elements = Vec::<CustomRenderElement<GlesRenderer>>::new();
 
+            let cursor_lefttop_pos = (cursor_pos - cursor_hotspot.to_f64())
+                .to_physical(scale)
+                .to_i32_round();
             elements.extend(self.backend.pointer_element.render_elements(
                 renderer,
-                cursor_pos_scaled,
+                cursor_lefttop_pos,
                 scale,
                 1.0,
             ));
 
             // draw the dnd icon if any
-            if let Some(surface) = dnd_icon {
-                if surface.alive() {
-                    elements.extend(AsRenderElements::<GlesRenderer>::render_elements(
-                        &smithay::desktop::space::SurfaceTree::from_surface(surface),
-                        renderer,
-                        cursor_pos_scaled,
-                        scale,
-                        1.0,
-                    ));
+            if let Some(dnd_icon) = dnd_icon {
+                let dnd_icon_pos = (cursor_pos + dnd_icon.offset.to_f64())
+                    .to_physical(scale)
+                    .to_i32_round();
+                if dnd_icon.surface.alive() {
+                    elements.extend(
+                        smithay::desktop::space::SurfaceTree::from_surface(&dnd_icon.surface)
+                            .render_elements(renderer, dnd_icon_pos, scale, 1.0),
+                    );
                 }
             }
 

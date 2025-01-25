@@ -15,8 +15,9 @@ use smithay::input::{Seat, SeatState};
 use smithay::reexports::calloop::{EventLoop, LoopHandle, LoopSignal};
 use smithay::reexports::wayland_server;
 use smithay::reexports::wayland_server::backend::{ClientData, ClientId, DisconnectReason};
+use smithay::reexports::wayland_server::protocol::wl_surface::WlSurface;
 use smithay::reexports::wayland_server::{Display, DisplayHandle};
-use smithay::utils::{Clock, Monotonic, Point, Rectangle, Size};
+use smithay::utils::{Clock, Logical, Monotonic, Point, Rectangle, Size};
 use smithay::wayland::compositor::{CompositorClientState, CompositorState};
 use smithay::wayland::input_method::InputMethodManagerState;
 use smithay::wayland::keyboard_shortcuts_inhibit::KeyboardShortcutsInhibitState;
@@ -85,7 +86,7 @@ pub(crate) struct InnerState {
     pub single_pixel_buffer_state: SinglePixelBufferState,
     pub session_lock_data: crate::session_lock::SessionLockData,
 
-    pub dnd_icon: Option<wayland_server::protocol::wl_surface::WlSurface>,
+    pub dnd_icon: Option<DndIcon>,
 
     // input-related fields
     pub cursor_status: CursorImageStatus,
@@ -106,6 +107,12 @@ pub(crate) struct InnerState {
     pub focus_update_decider: FocusUpdateDecider,
 
     pub config_delegate: ConfigDelegate,
+}
+
+#[derive(Debug)]
+pub struct DndIcon {
+    pub surface: WlSurface,
+    pub offset: Point<i32, Logical>,
 }
 
 pub(crate) struct SabiniwmStateWithConcreteBackend<'a, B>

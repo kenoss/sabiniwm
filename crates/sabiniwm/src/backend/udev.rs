@@ -4,7 +4,7 @@ use crate::envvar::EnvVar;
 use crate::pointer::{PointerElement, CLEAR_COLOR};
 use crate::render::{CustomRenderElement, OutputRenderElement};
 use crate::render_loop::RenderLoop;
-use crate::state::{InnerState, SabiniwmState, SabiniwmStateWithConcreteBackend};
+use crate::state::{DndIcon, InnerState, SabiniwmState, SabiniwmStateWithConcreteBackend};
 use crate::util::EventHandler;
 use crate::view::window::WindowRenderElement;
 use crate::wl_global::WlGlobal;
@@ -1389,7 +1389,7 @@ fn make_additional_elements<R>(
     pointer_location: Point<f64, Logical>,
     pointer_image: &MemoryRenderBuffer,
     pointer_element: &mut PointerElement,
-    dnd_icon: &Option<wayland_server::protocol::wl_surface::WlSurface>,
+    dnd_icon: &Option<DndIcon>,
     cursor_status: &mut CursorImageStatus,
 ) -> Vec<CustomRenderElement<R>>
 where
@@ -1415,8 +1415,7 @@ where
         } else {
             (0, 0).into()
         };
-        let cursor_pos = pointer_location - output_geometry.loc.to_f64() - cursor_hotspot.to_f64();
-        let cursor_pos_scaled = cursor_pos.to_physical(scale).to_i32_round();
+        let cursor_pos = pointer_location - output_geometry.loc.to_f64();
 
         // set cursor
         pointer_element.set_buffer(pointer_image.clone());
@@ -1435,24 +1434,31 @@ where
 
             pointer_element.set_status(cursor_status.clone());
 
+            let cursor_lefttop_pos = (cursor_pos - cursor_hotspot.to_f64())
+                .to_physical(scale)
+                .to_i32_round();
             elements.extend(pointer_element.render_elements(
                 renderer,
-                cursor_pos_scaled,
+                cursor_lefttop_pos,
                 scale,
                 1.0,
             ));
         }
 
         // draw the dnd icon if applicable
-        if let Some(wl_surface) = dnd_icon.as_ref() {
-            if wl_surface.alive() {
-                elements.extend(AsRenderElements::<R>::render_elements(
-                    &SurfaceTree::from_surface(wl_surface),
-                    renderer,
-                    cursor_pos_scaled,
-                    scale,
-                    1.0,
-                ));
+        if let Some(dnd_icon) = dnd_icon.as_ref() {
+            let dnd_icon_pos = (cursor_pos + dnd_icon.offset.to_f64())
+                .to_physical(scale)
+                .to_i32_round();
+            if dnd_icon.surface.alive() {
+                elements.extend(
+                    SurfaceTree::from_surface(&dnd_icon.surface).render_elements(
+                        renderer,
+                        dnd_icon_pos,
+                        scale,
+                        1.0,
+                    ),
+                );
             }
         }
     }
