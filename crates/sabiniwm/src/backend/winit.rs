@@ -263,8 +263,6 @@ impl SabiniwmStateWithConcreteBackend<'_, WinitBackend> {
         *full_redraw = full_redraw.saturating_sub(1);
         let damage_tracker = &mut self.backend.damage_tracker;
 
-        let dnd_icon = self.inner.dnd_icon.as_ref();
-
         let scale = Scale::from(self.backend.output.current_scale().fractional_scale());
         let cursor_hotspot =
             if let CursorImageStatus::Surface(ref surface) = self.inner.cursor_status {
@@ -304,7 +302,7 @@ impl SabiniwmStateWithConcreteBackend<'_, WinitBackend> {
             ));
 
             // draw the dnd icon if any
-            if let Some(dnd_icon) = dnd_icon {
+            if let Some(dnd_icon) = self.inner.dnd_icon.as_ref() {
                 let dnd_icon_pos = (cursor_pos + dnd_icon.offset.to_f64())
                     .to_physical(scale)
                     .to_i32_round();
