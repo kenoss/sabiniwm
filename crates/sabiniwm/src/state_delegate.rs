@@ -35,7 +35,7 @@ use smithay::wayland::selection::primary_selection::{
 use smithay::wayland::selection::wlr_data_control::{DataControlHandler, DataControlState};
 use smithay::wayland::selection::{SelectionHandler, SelectionSource, SelectionTarget};
 use smithay::wayland::shell::xdg::decoration::XdgDecorationHandler;
-use smithay::wayland::shell::xdg::{ToplevelSurface, XdgToplevelSurfaceData};
+use smithay::wayland::shell::xdg::{ToplevelSurface};
 use smithay::wayland::shm::{ShmHandler, ShmState};
 use smithay::wayland::xdg_activation::{
     XdgActivationHandler, XdgActivationState, XdgActivationToken, XdgActivationTokenData,
@@ -328,16 +328,7 @@ impl XdgDecorationHandler for SabiniwmState {
             });
         });
 
-        let initial_configure_sent = with_states(toplevel.wl_surface(), |states| {
-            states
-                .data_map
-                .get::<XdgToplevelSurfaceData>()
-                .unwrap()
-                .lock()
-                .unwrap()
-                .initial_configure_sent
-        });
-        if initial_configure_sent {
+        if toplevel.is_initial_configure_sent() {
             toplevel.send_pending_configure();
         }
     }
@@ -346,16 +337,7 @@ impl XdgDecorationHandler for SabiniwmState {
         toplevel.with_pending_state(|state| {
             state.decoration_mode = Some(Mode::ClientSide);
         });
-        let initial_configure_sent = with_states(toplevel.wl_surface(), |states| {
-            states
-                .data_map
-                .get::<XdgToplevelSurfaceData>()
-                .unwrap()
-                .lock()
-                .unwrap()
-                .initial_configure_sent
-        });
-        if initial_configure_sent {
+        if toplevel.is_initial_configure_sent() {
             toplevel.send_pending_configure();
         }
     }
