@@ -56,6 +56,7 @@ use smithay::wayland::dmabuf::{DmabufFeedback, DmabufFeedbackBuilder, DmabufGlob
 use smithay::wayland::drm_lease::{
     DrmLease, DrmLeaseBuilder, DrmLeaseHandler, DrmLeaseRequest, DrmLeaseState, LeaseRejected,
 };
+use smithay::wayland::drm_syncobj::{supports_syncobj_eventfd, DrmSyncobjHandler, DrmSyncobjState};
 use smithay_drm_extras::drm_scanner::{DrmScanEvent, DrmScanner};
 use std::collections::hash_map::HashMap;
 use std::collections::HashSet;
@@ -93,6 +94,7 @@ struct UdevOutputId {
 pub(crate) struct UdevBackend {
     session: LibSeatSession,
     dmabuf_state: Option<(DmabufState, DmabufGlobal)>,
+    syncobj_state: Option<DrmSyncobjState>,
     selected_render_node: DrmNode,
     gpus: GpuManager<GbmGlesBackend<GlesRenderer, DrmDeviceFd>>,
     backends: HashMap<DrmNode, BackendData>,
@@ -177,6 +179,7 @@ impl UdevBackend {
 
         Ok(UdevBackend {
             dmabuf_state: None,
+            syncobj_state: None,
             session,
             selected_render_node,
             gpus,
@@ -288,6 +291,22 @@ impl BackendI for UdevBackend {
                         &surface_data.compositor,
                     )
                 });
+            }
+        }
+
+        // Expose syncobj protocol if supported by primary GPU
+        if let Some(primary_node) = self
+            .selected_render_node
+            .node_with_type(NodeType::Primary)
+            .and_then(|x| x.ok())
+        {
+            if let Some(backend) = self.backends.get(&primary_node) {
+                let import_device = backend.drm.device_fd().clone();
+                if supports_syncobj_eventfd(&import_device) {
+                    let syncobj_state =
+                        DrmSyncobjState::new::<SabiniwmState>(&inner.display_handle, import_device);
+                    self.syncobj_state = Some(syncobj_state);
+                }
             }
         }
 
@@ -415,6 +434,14 @@ impl DrmLeaseHandler for SabiniwmState {
 }
 
 delegate_drm_lease!(SabiniwmState);
+
+impl DrmSyncobjHandler for SabiniwmState {
+    fn drm_syncobj_state(&mut self) -> &mut DrmSyncobjState {
+        self.as_udev_mut().backend.syncobj_state.as_mut().unwrap()
+    }
+}
+
+smithay::delegate_drm_syncobj!(SabiniwmState);
 
 #[derive(Debug, Default, serde::Deserialize)]
 pub(crate) enum SurfaceCompositionPolicy {
