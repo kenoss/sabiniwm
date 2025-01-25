@@ -46,6 +46,8 @@ impl KeySeq {
             unsafe {
                 keysym_handle
                     .xkb()
+                    .lock()
+                    .unwrap()
                     .state()
                     .mod_name_is_active(s, xkb::STATE_MODS_EFFECTIVE)
             }
