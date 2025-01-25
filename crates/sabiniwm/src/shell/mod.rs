@@ -214,13 +214,7 @@ fn ensure_initial_configure(
 
     if let Some(window) = space
         .elements()
-        .find(|window| {
-            window
-                .smithay_window()
-                .wl_surface()
-                .map(|s| &*s == surface)
-                .unwrap_or(false)
-        })
+        .find(|window| window.smithay_window().wl_surface().as_deref() == Some(surface))
         .cloned()
     {
         // send the initial configure if relevant
@@ -244,10 +238,10 @@ fn ensure_initial_configure(
     }
 
     if let Some(popup) = popups.find_popup(surface) {
-        let popup = match popup {
-            PopupKind::Xdg(ref popup) => popup,
+        let popup = match &popup {
+            PopupKind::Xdg(popup) => popup,
             // Doesn't require configure
-            PopupKind::InputMethod(ref _input_popup) => {
+            PopupKind::InputMethod(_) => {
                 return;
             }
         };
