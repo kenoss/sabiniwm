@@ -44,6 +44,7 @@ use smithay::wayland::xdg_foreign::{XdgForeignHandler, XdgForeignState};
 use smithay::wayland::xwayland_keyboard_grab::XWaylandKeyboardGrabHandler;
 use std::os::unix::io::OwnedFd;
 use std::sync::Arc;
+use smithay::utils::{Point, Logical};
 
 smithay::delegate_compositor!(SabiniwmState);
 
@@ -62,7 +63,6 @@ impl ClientDndGrabHandler for SabiniwmState {
     ) {
         use crate::state::DndIcon;
         use smithay::input::pointer::CursorImageSurfaceData;
-        use smithay::utils::Point;
 
         let offset = if let CursorImageStatus::Surface(ref surface) = self.inner.cursor_status {
             with_states(surface, |states| {
@@ -262,6 +262,30 @@ impl PointerConstraintsHandler for SabiniwmState {
             with_pointer_constraint(surface, pointer, |constraint| {
                 constraint.unwrap().activate();
             });
+        }
+    }
+
+    fn cursor_position_hint(
+        &mut self,
+        surface: &WlSurface,
+        pointer: &PointerHandle<Self>,
+        location: Point<f64, Logical>,
+    ) {
+        if with_pointer_constraint(surface, pointer, |constraint| {
+            constraint.map(|c| c.is_active()).unwrap_or(false)
+        }) {
+            let origin = self
+                .inner
+                .space
+                .elements()
+                .find_map(|window| {
+                    (window.smithay_window().wl_surface().as_deref() == Some(surface))
+                        .then(|| window.geometry())
+                })
+                .unwrap_or_default()
+                .loc
+                .to_f64();
+            pointer.set_location(origin + location);
         }
     }
 }
