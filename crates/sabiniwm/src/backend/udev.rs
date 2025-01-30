@@ -1262,6 +1262,19 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
             return;
         };
 
+        let output = if let Some(output) = self.inner.space.outputs().find(|o| {
+            o.user_data().get::<UdevOutputId>()
+                == Some(&UdevOutputId {
+                    primary_node: surface.primary_node,
+                    crtc,
+                })
+        }) {
+            output.clone()
+        } else {
+            // somehow we got called with an invalid output
+            return;
+        };
+
         // TODO get scale from the rendersurface when supporting HiDPI
         let frame = self
             .backend
@@ -1302,19 +1315,6 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
                 pointer_images.push((frame, buffer.clone()));
                 buffer
             });
-
-        let output = if let Some(output) = self.inner.space.outputs().find(|o| {
-            o.user_data().get::<UdevOutputId>()
-                == Some(&UdevOutputId {
-                    primary_node: surface.primary_node,
-                    crtc,
-                })
-        }) {
-            output.clone()
-        } else {
-            // somehow we got called with an invalid output
-            return;
-        };
 
         let additional_elements = make_additional_elements(
             &mut renderer,
