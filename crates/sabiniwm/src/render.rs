@@ -200,11 +200,51 @@ impl InnerState {
         use smithay::desktop::utils::{
             send_dmabuf_feedback_surface_tree, send_frames_surface_tree,
             surface_primary_scanout_output, update_surface_primary_scanout_output,
+            with_surfaces_surface_tree,
         };
+        use smithay::input::pointer::CursorImageStatus;
         use smithay::wayland::compositor::{with_surface_tree_downward, TraversalAction};
         use smithay::wayland::fractional_scale::with_fractional_scale;
 
         let throttle = Some(Duration::from_secs(1));
+
+        if let CursorImageStatus::Surface(surface) = &self.cursor_status {
+            with_surfaces_surface_tree(surface, |surface, states| {
+                let primary_scanout_output = update_surface_primary_scanout_output(
+                    surface,
+                    output,
+                    states,
+                    render_element_states,
+                    default_primary_scanout_output_compare,
+                );
+
+                if let Some(output) = primary_scanout_output.as_ref() {
+                    with_fractional_scale(states, |fraction_scale| {
+                        fraction_scale
+                            .set_preferred_scale(output.current_scale().fractional_scale());
+                    });
+                }
+            });
+        }
+
+        if let Some(surface) = self.dnd_icon.as_ref().map(|icon| &icon.surface) {
+            with_surfaces_surface_tree(surface, |surface, states| {
+                let primary_scanout_output = update_surface_primary_scanout_output(
+                    surface,
+                    output,
+                    states,
+                    render_element_states,
+                    default_primary_scanout_output_compare,
+                );
+
+                if let Some(output) = primary_scanout_output.as_ref() {
+                    with_fractional_scale(states, |fraction_scale| {
+                        fraction_scale
+                            .set_preferred_scale(output.current_scale().fractional_scale());
+                    });
+                }
+            });
+        }
 
         use crate::session_lock::SessionLockState;
         match self.session_lock_data.get_lock_surface(output) {
@@ -262,6 +302,41 @@ impl InnerState {
             }
         }
 
+        let map = smithay::desktop::layer_map_for_output(output);
+        for layer_surface in map.layers() {
+            layer_surface.with_surfaces(|surface, states| {
+                let primary_scanout_output = update_surface_primary_scanout_output(
+                    surface,
+                    output,
+                    states,
+                    render_element_states,
+                    default_primary_scanout_output_compare,
+                );
+                if let Some(output) = primary_scanout_output {
+                    with_fractional_scale(states, |fraction_scale| {
+                        fraction_scale
+                            .set_preferred_scale(output.current_scale().fractional_scale());
+                    });
+                }
+            });
+
+            layer_surface.send_frame(output, time, throttle, surface_primary_scanout_output);
+            if let Some(dmabuf_feedback) = &dmabuf_feedback {
+                layer_surface.send_dmabuf_feedback(
+                    output,
+                    surface_primary_scanout_output,
+                    |surface, _| {
+                        select_dmabuf_feedback(
+                            surface,
+                            render_element_states,
+                            dmabuf_feedback.render_feedback,
+                            dmabuf_feedback.scanout_feedback,
+                        )
+                    },
+                );
+            }
+        }
+
         for window in self.space.elements() {
             window.smithay_window().with_surfaces(|surface, states| {
                 let primary_scanout_output = update_surface_primary_scanout_output(
@@ -302,41 +377,6 @@ impl InnerState {
                 }
             }
         }
-
-        let map = smithay::desktop::layer_map_for_output(output);
-        for layer_surface in map.layers() {
-            layer_surface.with_surfaces(|surface, states| {
-                let primary_scanout_output = update_surface_primary_scanout_output(
-                    surface,
-                    output,
-                    states,
-                    render_element_states,
-                    default_primary_scanout_output_compare,
-                );
-                if let Some(output) = primary_scanout_output {
-                    with_fractional_scale(states, |fraction_scale| {
-                        fraction_scale
-                            .set_preferred_scale(output.current_scale().fractional_scale());
-                    });
-                }
-            });
-
-            layer_surface.send_frame(output, time, throttle, surface_primary_scanout_output);
-            if let Some(dmabuf_feedback) = &dmabuf_feedback {
-                layer_surface.send_dmabuf_feedback(
-                    output,
-                    surface_primary_scanout_output,
-                    |surface, _| {
-                        select_dmabuf_feedback(
-                            surface,
-                            render_element_states,
-                            dmabuf_feedback.render_feedback,
-                            dmabuf_feedback.scanout_feedback,
-                        )
-                    },
-                );
-            }
-        }
     }
 
     pub(crate) fn take_presentation_feedback(
@@ -348,10 +388,39 @@ impl InnerState {
             surface_presentation_feedback_flags_from_states, surface_primary_scanout_output,
             take_presentation_feedback_surface_tree, OutputPresentationFeedback,
         };
+        use smithay::input::pointer::CursorImageStatus;
 
         let mut output_presentation_feedback = OutputPresentationFeedback::new(output);
 
         'body: {
+            if let CursorImageStatus::Surface(surface) = &self.cursor_status {
+                take_presentation_feedback_surface_tree(
+                    surface,
+                    &mut output_presentation_feedback,
+                    surface_primary_scanout_output,
+                    |surface, _| {
+                        surface_presentation_feedback_flags_from_states(
+                            surface,
+                            render_element_states,
+                        )
+                    },
+                );
+            }
+
+            if let Some(surface) = self.dnd_icon.as_ref().map(|icon| &icon.surface) {
+                take_presentation_feedback_surface_tree(
+                    surface,
+                    &mut output_presentation_feedback,
+                    surface_primary_scanout_output,
+                    |surface, _| {
+                        surface_presentation_feedback_flags_from_states(
+                            surface,
+                            render_element_states,
+                        )
+                    },
+                );
+            }
+
             use crate::session_lock::SessionLockState;
             match self.session_lock_data.get_lock_surface(output) {
                 SessionLockState::NotLocked => {}
@@ -375,6 +444,20 @@ impl InnerState {
                 }
             }
 
+            let map = smithay::desktop::layer_map_for_output(output);
+            for layer_surface in map.layers() {
+                layer_surface.take_presentation_feedback(
+                    &mut output_presentation_feedback,
+                    surface_primary_scanout_output,
+                    |surface, _| {
+                        surface_presentation_feedback_flags_from_states(
+                            surface,
+                            render_element_states,
+                        )
+                    },
+                );
+            }
+
             for window in self.space.elements() {
                 if self.space.outputs_for_element(window).contains(output) {
                     window.smithay_window().take_presentation_feedback(
@@ -388,20 +471,6 @@ impl InnerState {
                         },
                     );
                 }
-            }
-
-            let map = smithay::desktop::layer_map_for_output(output);
-            for layer_surface in map.layers() {
-                layer_surface.take_presentation_feedback(
-                    &mut output_presentation_feedback,
-                    surface_primary_scanout_output,
-                    |surface, _| {
-                        surface_presentation_feedback_flags_from_states(
-                            surface,
-                            render_element_states,
-                        )
-                    },
-                );
             }
         }
 
