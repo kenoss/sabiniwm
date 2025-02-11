@@ -173,7 +173,7 @@ impl<T> NonEmptyFocusedVec<T> {
     }
 }
 
-impl<'a, T> Drop for FocusedVecUpdateGuard<'a, T> {
+impl<T> Drop for FocusedVecUpdateGuard<'_, T> {
     fn drop(&mut self) {
         // Safety: Having ownership of `vec`.
         let p: &mut FocusedVec<T> = unsafe { &mut *self.p };
@@ -183,7 +183,7 @@ impl<'a, T> Drop for FocusedVecUpdateGuard<'a, T> {
     }
 }
 
-impl<'a, T> FocusedVecUpdateGuard<'a, T> {
+impl<T> FocusedVecUpdateGuard<'_, T> {
     pub fn commit(self) {
         drop(self);
     }
@@ -197,7 +197,7 @@ impl<'a, T> FocusedVecUpdateGuard<'a, T> {
     }
 }
 
-impl<'a, T> Drop for NonEmptyFocusedVecUpdateGuard<'a, T> {
+impl<T> Drop for NonEmptyFocusedVecUpdateGuard<'_, T> {
     fn drop(&mut self) {
         // Safety: Having ownership of `vec`.
         let p: &mut NonEmptyFocusedVec<T> = unsafe { &mut *self.p };
@@ -207,7 +207,7 @@ impl<'a, T> Drop for NonEmptyFocusedVecUpdateGuard<'a, T> {
     }
 }
 
-impl<'a, T> NonEmptyFocusedVecUpdateGuard<'a, T> {
+impl<T> NonEmptyFocusedVecUpdateGuard<'_, T> {
     pub fn commit(self) {
         drop(self);
     }

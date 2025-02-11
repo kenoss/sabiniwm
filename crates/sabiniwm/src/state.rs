@@ -254,7 +254,7 @@ impl SabiniwmState {
         SecurityContextState::new::<Self, _>(&display_handle, |client| {
             client
                 .get_data::<ClientState>()
-                .map_or(true, |client_state| client_state.security_context.is_none())
+                .is_none_or(|client_state| client_state.security_context.is_none())
         });
 
         // init input
