@@ -351,6 +351,8 @@ impl SabiniwmStateWithConcreteBackend<'_, WinitBackend> {
                 );
 
                 if has_rendered {
+                    use smithay::wayland::presentation::Refresh;
+
                     let mut output_presentation_feedback = self.inner.take_presentation_feedback(
                         &self.backend.output,
                         &render_output_result.states,
@@ -360,8 +362,12 @@ impl SabiniwmStateWithConcreteBackend<'_, WinitBackend> {
                         self.backend
                             .output
                             .current_mode()
-                            .map(|mode| Duration::from_secs_f64(1_000f64 / mode.refresh as f64))
-                            .unwrap_or_default(),
+                            .map(|mode| {
+                                Refresh::fixed(Duration::from_secs_f64(
+                                    1_000f64 / mode.refresh as f64,
+                                ))
+                            })
+                            .unwrap_or(Refresh::Unknown),
                         0,
                         wp_presentation_feedback::Kind::Vsync,
                     )

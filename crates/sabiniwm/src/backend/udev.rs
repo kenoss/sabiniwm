@@ -1192,12 +1192,17 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
                         )
                     };
 
+                    use smithay::wayland::presentation::Refresh;
                     feedback.presented(
                         clock,
                         output
                             .current_mode()
-                            .map(|mode| Duration::from_secs_f64(1_000f64 / mode.refresh as f64))
-                            .unwrap_or_default(),
+                            .map(|mode| {
+                                Refresh::fixed(Duration::from_secs_f64(
+                                    1_000f64 / mode.refresh as f64,
+                                ))
+                            })
+                            .unwrap_or(Refresh::Unknown),
                         seq as u64,
                         flags,
                     );
