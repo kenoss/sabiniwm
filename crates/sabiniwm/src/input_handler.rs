@@ -20,6 +20,7 @@ impl SabiniwmState {
             .unwrap()
             .loc
             .to_f64();
+        let pos_rel_out = pos - output_loc;
 
         use crate::session_lock::SessionLockState;
         match self.inner.session_lock_data.get_lock_surface(output) {
@@ -40,12 +41,12 @@ impl SabiniwmState {
         let layers = layer_map_for_output(output);
 
         if let ret @ Some(_) = layers
-            .layer_under(WlrLayer::Overlay, pos)
-            .or_else(|| layers.layer_under(WlrLayer::Top, pos))
+            .layer_under(WlrLayer::Overlay, pos_rel_out)
+            .or_else(|| layers.layer_under(WlrLayer::Top, pos_rel_out))
             .and_then(|layer| {
                 let layer_loc = layers.layer_geometry(layer).unwrap().loc.to_f64();
                 layer
-                    .surface_under(pos - output_loc - layer_loc, WindowSurfaceType::ALL)
+                    .surface_under(pos_rel_out - layer_loc, WindowSurfaceType::ALL)
                     .map(|(surface, loc)| {
                         (
                             PointerFocusTarget::from(surface),
@@ -72,15 +73,12 @@ impl SabiniwmState {
         }
 
         if let ret @ Some(_) = layers
-            .layer_under(WlrLayer::Bottom, pos)
-            .or_else(|| layers.layer_under(WlrLayer::Background, pos))
+            .layer_under(WlrLayer::Bottom, pos_rel_out)
+            .or_else(|| layers.layer_under(WlrLayer::Background, pos_rel_out))
             .and_then(|layer| {
                 let layer_loc = layers.layer_geometry(layer).unwrap().loc.to_f64();
                 layer
-                    .surface_under(
-                        pos - output_loc - layer_loc.to_f64(),
-                        WindowSurfaceType::ALL,
-                    )
+                    .surface_under(pos_rel_out - layer_loc.to_f64(), WindowSurfaceType::ALL)
                     .map(|(surface, loc)| {
                         (
                             PointerFocusTarget::from(surface),
