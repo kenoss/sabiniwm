@@ -1824,7 +1824,7 @@ checksum = "3c5e1a9a646d36c3599cd173a41282daf47c44583ad367b8e6837255952e5c67"
 [[package]]
 name = "smithay"
 version = "0.3.0"
-source = "git+https://github.com/Smithay/smithay?rev=4e7d4a3#4e7d4a361d60a66a5b0a4c3c7917418a15997a47"
+source = "git+https://github.com/Smithay/smithay?rev=a5e0dd2#a5e0dd28b372af4d6a3c0ceec498bd7041bb63c9"
 dependencies = [
  "appendlist",
  "ash",

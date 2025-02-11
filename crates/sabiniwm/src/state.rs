@@ -18,7 +18,9 @@ use smithay::reexports::wayland_server::backend::{ClientData, ClientId, Disconne
 use smithay::reexports::wayland_server::protocol::wl_surface::WlSurface;
 use smithay::reexports::wayland_server::{Display, DisplayHandle};
 use smithay::utils::{Clock, Logical, Monotonic, Point, Rectangle, Size};
+use smithay::wayland::commit_timing::CommitTimingManagerState;
 use smithay::wayland::compositor::{CompositorClientState, CompositorState};
+use smithay::wayland::fifo::FifoManagerState;
 use smithay::wayland::input_method::InputMethodManagerState;
 use smithay::wayland::keyboard_shortcuts_inhibit::KeyboardShortcutsInhibitState;
 use smithay::wayland::pointer_constraints::PointerConstraintsState;
@@ -85,6 +87,10 @@ pub(crate) struct InnerState {
     #[allow(unused)]
     pub single_pixel_buffer_state: SinglePixelBufferState,
     pub session_lock_data: crate::session_lock::SessionLockData,
+    #[allow(unused)]
+    pub fifo_manager_state: FifoManagerState,
+    #[allow(unused)]
+    pub commit_timing_manager_state: CommitTimingManagerState,
 
     pub dnd_icon: Option<DndIcon>,
 
@@ -232,6 +238,8 @@ impl SabiniwmState {
         let xdg_foreign_state = XdgForeignState::new::<Self>(&display_handle);
         let single_pixel_buffer_state = SinglePixelBufferState::new::<Self>(&display_handle);
         let session_lock_data = crate::session_lock::SessionLockData::new(&display_handle);
+        let fifo_manager_state = FifoManagerState::new::<Self>(&display_handle);
+        let commit_timing_manager_state = CommitTimingManagerState::new::<Self>(&display_handle);
         TextInputManagerState::new::<Self>(&display_handle);
         InputMethodManagerState::new::<Self, _>(&display_handle, |_client| true);
         VirtualKeyboardManagerState::new::<Self, _>(&display_handle, |_client| true);
@@ -319,6 +327,8 @@ impl SabiniwmState {
                 xdg_foreign_state,
                 single_pixel_buffer_state,
                 session_lock_data,
+                fifo_manager_state,
+                commit_timing_manager_state,
                 dnd_icon: None,
                 cursor_status,
                 seat_name,

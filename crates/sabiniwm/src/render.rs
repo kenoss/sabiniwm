@@ -1,5 +1,5 @@
 use crate::pointer::{PointerRenderElement, CLEAR_COLOR};
-use crate::state::InnerState;
+use crate::state::{InnerState, SabiniwmState};
 use crate::view::window::WindowRenderElement;
 use smithay::backend::renderer::element::solid::SolidColorRenderElement;
 use smithay::backend::renderer::element::surface::WaylandSurfaceRenderElement;
@@ -106,10 +106,113 @@ where
     }
 }
 
-#[derive(Debug)]
-pub(crate) struct SurfaceDmabufFeedback<'a> {
-    pub render_feedback: &'a DmabufFeedback,
-    pub scanout_feedback: &'a DmabufFeedback,
+#[derive(Debug, Clone)]
+pub(crate) struct SurfaceDmabufFeedback {
+    pub render_feedback: DmabufFeedback,
+    pub scanout_feedback: DmabufFeedback,
+}
+
+impl SabiniwmState {
+    pub(crate) fn pre_repaint(&mut self, output: &Output) {
+        use smithay::desktop::utils::{surface_primary_scanout_output, with_surfaces_surface_tree};
+        use smithay::input::pointer::CursorImageStatus;
+        use smithay::reexports::wayland_server::Resource;
+        use smithay::wayland::commit_timing::CommitTimerBarrierStateUserData;
+        use smithay::wayland::compositor::CompositorHandler;
+        use std::collections::HashMap;
+
+        let now = self.inner.clock.now();
+        // False positive
+        #[allow(clippy::mutable_key_type)]
+        let mut clients = HashMap::new();
+
+        if let CursorImageStatus::Surface(surface) = &self.inner.cursor_status {
+            with_surfaces_surface_tree(surface, |surface, states| {
+                let clear_commit_timer = surface_primary_scanout_output(surface, states)
+                    .map(|primary_output| &primary_output == output)
+                    .unwrap_or(true);
+
+                if clear_commit_timer {
+                    if let Some(mut commit_timer_state) = states
+                        .data_map
+                        .get::<CommitTimerBarrierStateUserData>()
+                        .map(|commit_timer| commit_timer.lock().unwrap())
+                    {
+                        commit_timer_state.signal_until(now);
+                        let client = surface.client().unwrap();
+                        clients.insert(client.id(), client);
+                    }
+                }
+            });
+        }
+
+        if let Some(surface) = self.inner.dnd_icon.as_ref().map(|icon| &icon.surface) {
+            with_surfaces_surface_tree(surface, |surface, states| {
+                let clear_commit_timer = surface_primary_scanout_output(surface, states)
+                    .map(|primary_output| &primary_output == output)
+                    .unwrap_or(true);
+
+                if clear_commit_timer {
+                    if let Some(mut commit_timer_state) = states
+                        .data_map
+                        .get::<CommitTimerBarrierStateUserData>()
+                        .map(|commit_timer| commit_timer.lock().unwrap())
+                    {
+                        commit_timer_state.signal_until(now);
+                        let client = surface.client().unwrap();
+                        clients.insert(client.id(), client);
+                    }
+                }
+            });
+        }
+
+        let map = smithay::desktop::layer_map_for_output(output);
+        for layer_surface in map.layers() {
+            layer_surface.with_surfaces(|surface, states| {
+                let clear_commit_timer = surface_primary_scanout_output(surface, states)
+                    .map(|primary_output| &primary_output == output)
+                    .unwrap_or(true);
+
+                if clear_commit_timer {
+                    if let Some(mut commit_timer_state) = states
+                        .data_map
+                        .get::<CommitTimerBarrierStateUserData>()
+                        .map(|commit_timer| commit_timer.lock().unwrap())
+                    {
+                        commit_timer_state.signal_until(now);
+                        let client = surface.client().unwrap();
+                        clients.insert(client.id(), client);
+                    }
+                }
+            });
+        }
+
+        for window in self.inner.space.elements() {
+            window.smithay_window().with_surfaces(|surface, states| {
+                let clear_commit_timer = surface_primary_scanout_output(surface, states)
+                    .map(|primary_output| &primary_output == output)
+                    .unwrap_or(true);
+
+                if clear_commit_timer {
+                    if let Some(mut commit_timer_state) = states
+                        .data_map
+                        .get::<CommitTimerBarrierStateUserData>()
+                        .map(|commit_timer| commit_timer.lock().unwrap())
+                    {
+                        commit_timer_state.signal_until(now);
+                        let client = surface.client().unwrap();
+                        clients.insert(client.id(), client);
+                    }
+                }
+            });
+        }
+
+        let display_handle = self.inner.display_handle.clone();
+        for client in clients.into_values() {
+            self.client_compositor_state(&client)
+                .blocker_cleared(self, &display_handle);
+        }
+    }
 }
 
 impl InnerState {
@@ -192,7 +295,7 @@ impl InnerState {
         &self,
         output: &smithay::output::Output,
         render_element_states: &RenderElementStates,
-        dmabuf_feedback: Option<SurfaceDmabufFeedback<'_>>,
+        dmabuf_feedback: Option<SurfaceDmabufFeedback>,
         time: Duration,
     ) {
         use smithay::backend::renderer::element::default_primary_scanout_output_compare;
@@ -203,10 +306,16 @@ impl InnerState {
             with_surfaces_surface_tree,
         };
         use smithay::input::pointer::CursorImageStatus;
+        use smithay::reexports::wayland_server::Resource;
         use smithay::wayland::compositor::{with_surface_tree_downward, TraversalAction};
+        use smithay::wayland::fifo::FifoBarrierCachedState;
         use smithay::wayland::fractional_scale::with_fractional_scale;
+        use std::collections::HashMap;
 
         let throttle = Some(Duration::from_secs(1));
+        // False positive
+        #[allow(clippy::mutable_key_type)]
+        let mut clients = HashMap::new();
 
         if let CursorImageStatus::Surface(surface) = &self.cursor_status {
             with_surfaces_surface_tree(surface, |surface, states| {
@@ -223,6 +332,20 @@ impl InnerState {
                         fraction_scale
                             .set_preferred_scale(output.current_scale().fractional_scale());
                     });
+                }
+
+                if primary_scanout_output.as_ref() == Some(output) {
+                    let fifo_barrier = states
+                        .cached_state
+                        .get::<FifoBarrierCachedState>()
+                        .current()
+                        .barrier
+                        .take();
+                    if let Some(fifo_barrier) = fifo_barrier {
+                        fifo_barrier.signal();
+                        let client = surface.client().unwrap();
+                        clients.insert(client.id(), client);
+                    }
                 }
             });
         }
@@ -242,6 +365,20 @@ impl InnerState {
                         fraction_scale
                             .set_preferred_scale(output.current_scale().fractional_scale());
                     });
+                }
+
+                if primary_scanout_output.as_ref() == Some(output) {
+                    let fifo_barrier = states
+                        .cached_state
+                        .get::<FifoBarrierCachedState>()
+                        .current()
+                        .barrier
+                        .take();
+                    if let Some(fifo_barrier) = fifo_barrier {
+                        fifo_barrier.signal();
+                        let client = surface.client().unwrap();
+                        clients.insert(client.id(), client);
+                    }
                 }
             });
         }
@@ -263,16 +400,32 @@ impl InnerState {
                                 render_element_states,
                                 default_primary_scanout_output_compare,
                             );
-                            if let Some(output) = primary_scanout_output {
+
+                            if let Some(output) = &primary_scanout_output {
                                 with_fractional_scale(states, |fraction_scale| {
                                     fraction_scale.set_preferred_scale(
                                         output.current_scale().fractional_scale(),
                                     );
                                 });
                             }
+
+                            if primary_scanout_output.as_ref() == Some(output) {
+                                let fifo_barrier = states
+                                    .cached_state
+                                    .get::<FifoBarrierCachedState>()
+                                    .current()
+                                    .barrier
+                                    .take();
+                                if let Some(fifo_barrier) = fifo_barrier {
+                                    fifo_barrier.signal();
+                                    let client = surface.client().unwrap();
+                                    clients.insert(client.id(), client);
+                                }
+                            }
                         },
                         |_, _, _| true,
                     );
+
                     send_frames_surface_tree(
                         lock_surface.wl_surface(),
                         output,
@@ -289,8 +442,8 @@ impl InnerState {
                                 select_dmabuf_feedback(
                                     surface,
                                     render_element_states,
-                                    dmabuf_feedback.render_feedback,
-                                    dmabuf_feedback.scanout_feedback,
+                                    &dmabuf_feedback.render_feedback,
+                                    &dmabuf_feedback.scanout_feedback,
                                 )
                             },
                         );
@@ -312,11 +465,26 @@ impl InnerState {
                     render_element_states,
                     default_primary_scanout_output_compare,
                 );
-                if let Some(output) = primary_scanout_output {
+
+                if let Some(output) = &primary_scanout_output {
                     with_fractional_scale(states, |fraction_scale| {
                         fraction_scale
                             .set_preferred_scale(output.current_scale().fractional_scale());
                     });
+                }
+
+                if primary_scanout_output.as_ref() == Some(output) {
+                    let fifo_barrier = states
+                        .cached_state
+                        .get::<FifoBarrierCachedState>()
+                        .current()
+                        .barrier
+                        .take();
+                    if let Some(fifo_barrier) = fifo_barrier {
+                        fifo_barrier.signal();
+                        let client = surface.client().unwrap();
+                        clients.insert(client.id(), client);
+                    }
                 }
             });
 
@@ -329,8 +497,8 @@ impl InnerState {
                         select_dmabuf_feedback(
                             surface,
                             render_element_states,
-                            dmabuf_feedback.render_feedback,
-                            dmabuf_feedback.scanout_feedback,
+                            &dmabuf_feedback.render_feedback,
+                            &dmabuf_feedback.scanout_feedback,
                         )
                     },
                 );
@@ -346,11 +514,26 @@ impl InnerState {
                     render_element_states,
                     default_primary_scanout_output_compare,
                 );
-                if let Some(output) = primary_scanout_output {
+
+                if let Some(output) = &primary_scanout_output {
                     with_fractional_scale(states, |fraction_scale| {
                         fraction_scale
                             .set_preferred_scale(output.current_scale().fractional_scale());
                     });
+                }
+
+                if primary_scanout_output.as_ref() == Some(output) {
+                    let fifo_barrier = states
+                        .cached_state
+                        .get::<FifoBarrierCachedState>()
+                        .current()
+                        .barrier
+                        .take();
+                    if let Some(fifo_barrier) = fifo_barrier {
+                        fifo_barrier.signal();
+                        let client = surface.client().unwrap();
+                        clients.insert(client.id(), client);
+                    }
                 }
             });
 
@@ -369,8 +552,8 @@ impl InnerState {
                             select_dmabuf_feedback(
                                 surface,
                                 render_element_states,
-                                dmabuf_feedback.render_feedback,
-                                dmabuf_feedback.scanout_feedback,
+                                &dmabuf_feedback.render_feedback,
+                                &dmabuf_feedback.scanout_feedback,
                             )
                         },
                     );

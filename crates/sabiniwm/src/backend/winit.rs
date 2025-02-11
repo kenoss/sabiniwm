@@ -76,6 +76,8 @@ impl WinitBackend {
         // `InnerState::on_output_added()` will be called later, at the head of `init()`, as it requires `InnerState`.
 
         let mut render_loop = RenderLoop::new(loop_handle.clone(), &output, move |state| {
+            let output = state.as_winit_mut().backend.output.clone();
+            state.pre_repaint(&output);
             state.as_winit_mut().render();
         });
         render_loop.start();

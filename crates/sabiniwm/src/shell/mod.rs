@@ -39,9 +39,11 @@ impl CompositorHandler for SabiniwmState {
         if let Some(state) = client.get_data::<XWaylandClientData>() {
             return &state.compositor_state;
         }
+
         if let Some(state) = client.get_data::<ClientState>() {
             return &state.compositor_state;
         }
+
         panic!("Unknown client data type")
     }
 

@@ -2,7 +2,7 @@ use crate::backend::BackendI;
 use crate::config::ConfigDelegateUnstableI;
 use crate::envvar::EnvVar;
 use crate::pointer::{PointerElement, CLEAR_COLOR};
-use crate::render::{CustomRenderElement, OutputRenderElement};
+use crate::render::{CustomRenderElement, OutputRenderElement, SurfaceDmabufFeedback};
 use crate::render_loop::RenderLoop;
 use crate::state::{DndIcon, InnerState, SabiniwmState, SabiniwmStateWithConcreteBackend};
 use crate::util::EventHandler;
@@ -52,7 +52,7 @@ use smithay::reexports::wayland_server::protocol::wl_output::WlOutput;
 use smithay::reexports::{input as libinput, wayland_server};
 use smithay::utils::{DeviceFd, IsAlive, Logical, Physical, Point, Rectangle, Scale, Transform};
 use smithay::wayland::compositor;
-use smithay::wayland::dmabuf::{DmabufFeedback, DmabufFeedbackBuilder, DmabufGlobal, DmabufState};
+use smithay::wayland::dmabuf::{DmabufFeedbackBuilder, DmabufGlobal, DmabufState};
 use smithay::wayland::drm_lease::{
     DrmLease, DrmLeaseBuilder, DrmLeaseHandler, DrmLeaseRequest, DrmLeaseState, LeaseRejected,
 };
@@ -604,11 +604,6 @@ impl SurfaceComposition {
     }
 }
 
-struct DrmSurfaceDmabufFeedback {
-    render_feedback: DmabufFeedback,
-    scanout_feedback: DmabufFeedback,
-}
-
 struct SurfaceData {
     primary_node: DrmNode,
     render_node: DrmNode,
@@ -616,7 +611,7 @@ struct SurfaceData {
     #[allow(unused)]
     wl_output_global: WlGlobal<SabiniwmState, WlOutput>,
     compositor: SurfaceComposition,
-    dmabuf_feedback: Option<DrmSurfaceDmabufFeedback>,
+    dmabuf_feedback: Option<SurfaceDmabufFeedback>,
     // Note that a render loop is run per CRTC. This might be not good with multiple displays.
     // Possible solution would be running only one render loop (or one per GPU) with highest refresh
     // rate.
@@ -656,7 +651,7 @@ fn get_surface_dmabuf_feedback(
     render_node: DrmNode,
     gpus: &mut GpuManager<GbmGlesBackend<GlesRenderer, DrmDeviceFd>>,
     composition: &SurfaceComposition,
-) -> Option<DrmSurfaceDmabufFeedback> {
+) -> Option<SurfaceDmabufFeedback> {
     let primary_formats = gpus
         .single_renderer(&selected_render_node)
         .ok()?
@@ -704,7 +699,7 @@ fn get_surface_dmabuf_feedback(
         .build()
         .unwrap();
 
-    Some(DrmSurfaceDmabufFeedback {
+    Some(SurfaceDmabufFeedback {
         render_feedback,
         scanout_feedback,
     })
@@ -1522,13 +1517,7 @@ impl InnerState {
         self.post_repaint(
             output,
             &states,
-            surface
-                .dmabuf_feedback
-                .as_ref()
-                .map(|feedback| crate::render::SurfaceDmabufFeedback {
-                    render_feedback: &feedback.render_feedback,
-                    scanout_feedback: &feedback.scanout_feedback,
-                }),
+            surface.dmabuf_feedback.clone(),
             self.clock.now().into(),
         );
 
