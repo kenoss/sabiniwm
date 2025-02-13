@@ -32,7 +32,8 @@ use smithay::backend::renderer::sync::SyncPoint;
 #[cfg(feature = "egl")]
 use smithay::backend::renderer::ImportEgl;
 use smithay::backend::renderer::{
-    Bind, DebugFlags, ExportMem, ImportAll, ImportDma, ImportMem, ImportMemWl, Offscreen, Renderer,
+    Bind, Color32F, DebugFlags, ExportMem, ImportAll, ImportDma, ImportMem, ImportMemWl, Offscreen,
+    Renderer,
 };
 use smithay::backend::session::libseat::{self, LibSeatSession};
 use smithay::backend::session::{Event as SessionEvent, Session};
@@ -543,12 +544,13 @@ impl SurfaceComposition {
         &mut self,
         renderer: &mut R,
         elements: &[E],
-        clear_color: [f32; 4],
+        clear_color: Color32F,
+        frame_mode: smithay::backend::drm::compositor::FrameMode,
     ) -> Result<SurfaceCompositorRenderResult<'_>, SwapBuffersError>
     where
         R: Renderer + Bind<Dmabuf> + Bind<Target> + Offscreen<Target> + ExportMem,
         <R as Renderer>::TextureId: 'static,
-        <R as Renderer>::Error: Into<SwapBuffersError>,
+        <R as Renderer>::Error: Into<SwapBuffersError> + Send + Sync + 'static,
         E: RenderElement<R>,
     {
         match self {
@@ -584,7 +586,7 @@ impl SurfaceComposition {
                 res
             }
             SurfaceComposition::Compositor(compositor) => compositor
-                .render_frame(renderer, elements, clear_color)
+                .render_frame(renderer, elements, clear_color, frame_mode)
                 .map(|render_frame_result| SurfaceCompositorRenderResult {
                     rendered: !render_frame_result.is_empty,
                     damage: None,
@@ -969,7 +971,7 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
                             Some(planes),
                             allocator,
                             device.gbm.clone(),
-                            color_formats,
+                            color_formats.iter().copied(),
                             render_formats,
                             device.drm.cursor_size(),
                             Some(device.gbm.clone()),
@@ -1329,9 +1331,14 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
         let (elements, clear_color) =
             self.inner
                 .make_output_elements(&mut renderer, &output, additional_elements);
-        let result =
-            self.inner
-                .render_surface_data(surface, &mut renderer, &output, elements, clear_color);
+        let result = self.inner.render_surface_data(
+            surface,
+            &mut renderer,
+            &output,
+            elements,
+            clear_color,
+            self.inner.frame_mode(),
+        );
         let should_reschedule_render = match &result {
             Ok(has_rendered) => !has_rendered,
             Err(err) => {
@@ -1386,7 +1393,7 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
         let node = surface.render_node;
         let result = {
             let mut renderer = self.backend.gpus.single_renderer(&node).unwrap();
-            initial_render(surface, &mut renderer)
+            initial_render(surface, &mut renderer, self.inner.frame_mode())
         };
 
         if let Err(err) = result {
@@ -1494,19 +1501,30 @@ where
 }
 
 impl InnerState {
+    fn frame_mode(&self) -> smithay::backend::drm::compositor::FrameMode {
+        use smithay::backend::drm::compositor::FrameMode;
+
+        if self.envvar.sabiniwm.enable_direct_scanout {
+            FrameMode::ALL
+        } else {
+            FrameMode::COMPOSITE
+        }
+    }
+
     fn render_surface_data<R>(
         &self,
         surface: &mut SurfaceData,
         renderer: &mut R,
         output: &smithay::output::Output,
         elements: Vec<OutputRenderElement<R, WindowRenderElement<R>>>,
-        clear_color: [f32; 4],
+        clear_color: Color32F,
+        frame_mode: smithay::backend::drm::compositor::FrameMode,
     ) -> Result<bool, SwapBuffersError>
     where
         R: Renderer + ImportAll + ImportMem,
         R::TextureId: Clone + 'static,
         R: ExportMem + Offscreen<GlesTexture> + smithay::backend::renderer::Bind<Dmabuf>,
-        <R as Renderer>::Error: Into<smithay::backend::SwapBuffersError>,
+        <R as Renderer>::Error: Into<smithay::backend::SwapBuffersError> + Send + Sync + 'static,
     {
         let SurfaceCompositorRenderResult {
             rendered,
@@ -1517,6 +1535,7 @@ impl InnerState {
             renderer,
             &elements,
             clear_color,
+            frame_mode,
         )?;
 
         self.post_repaint(
@@ -1542,10 +1561,16 @@ impl InnerState {
 fn initial_render(
     surface: &mut SurfaceData,
     renderer: &mut UdevRenderer<'_>,
+    frame_mode: smithay::backend::drm::compositor::FrameMode,
 ) -> Result<(), SwapBuffersError> {
     surface
         .compositor
-        .render_frame::<_, CustomRenderElement<_>, GlesTexture>(renderer, &[], CLEAR_COLOR)?;
+        .render_frame::<_, CustomRenderElement<_>, GlesTexture>(
+            renderer,
+            &[],
+            CLEAR_COLOR,
+            frame_mode,
+        )?;
     surface.compositor.queue_frame(None, None, None)?;
     surface.compositor.reset_buffers();
 
