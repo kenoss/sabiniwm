@@ -4,7 +4,7 @@ use crate::view::window::WindowRenderElement;
 use smithay::backend::renderer::element::solid::SolidColorRenderElement;
 use smithay::backend::renderer::element::surface::WaylandSurfaceRenderElement;
 use smithay::backend::renderer::element::{RenderElement, RenderElementStates, Wrap};
-use smithay::backend::renderer::{ImportAll, ImportMem, Renderer};
+use smithay::backend::renderer::{Color32F, ImportAll, ImportMem, Renderer};
 use smithay::desktop::space::SpaceRenderElements;
 use smithay::output::Output;
 use smithay::wayland::dmabuf::DmabufFeedback;
@@ -227,7 +227,7 @@ impl InnerState {
         additional_elements: Vec<CustomRenderElement<R>>,
     ) -> (
         Vec<OutputRenderElement<R, WindowRenderElement<R>>>,
-        [f32; 4],
+        Color32F,
     )
     where
         R: Renderer + ImportAll + ImportMem,

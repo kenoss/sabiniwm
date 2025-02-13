@@ -5,12 +5,12 @@ use smithay::backend::renderer::element::memory::{
 };
 use smithay::backend::renderer::element::surface::WaylandSurfaceRenderElement;
 use smithay::backend::renderer::element::{AsRenderElements, Kind};
-use smithay::backend::renderer::{ImportAll, ImportMem, Renderer, Texture};
+use smithay::backend::renderer::{Color32F, ImportAll, ImportMem, Renderer, Texture};
 use smithay::input::pointer::CursorImageStatus;
 use smithay::utils::{Physical, Point, Scale};
 
-pub static CLEAR_COLOR: [f32; 4] = [0.1, 0.1, 0.1, 0.0];
-pub static CLEAR_COLOR_FULLSCREEN: [f32; 4] = [0.0, 0.0, 0.0, 0.0];
+pub static CLEAR_COLOR: Color32F = Color32F::new(0.1, 0.1, 0.1, 0.0);
+pub static CLEAR_COLOR_FULLSCREEN: Color32F = Color32F::new(0.0, 0.0, 0.0, 0.0);
 
 pub struct PointerElement {
     buffer: Option<MemoryRenderBuffer>,

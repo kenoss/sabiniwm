@@ -26,6 +26,8 @@ pub(crate) struct EnvVarSabiniwm {
     pub disable_10bit: bool,
     #[serde(default = "Default::default")]
     pub surface_composition_policy: SurfaceCompositionPolicy,
+    #[serde(default = "default_bool::<true>")]
+    pub enable_direct_scanout: bool,
 }
 
 // https://github.com/serde-rs/serde/issues/1030
