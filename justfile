@@ -34,3 +34,11 @@ install-session-dev:
   echo "$TEMPLATE_LAUNCH" | sed "s|BIN_PATH|$(pwd)/target/release/sabiniwm-pistachio|" > target/session/launch
   chmod +x $(pwd)/target/session/launch
   sudo install -m 644 target/session/sabiniwm.desktop /usr/share/wayland-sessions/
+
+install-session-dev-debug:
+  cargo build
+  mkdir -p target/session
+  echo "$TEMPLATE_SESSION" | sed "s|EXEC|$(pwd)/target/session/launch|" > target/session/sabiniwm.desktop
+  echo "$TEMPLATE_LAUNCH" | sed "s|BIN_PATH|$(pwd)/target/debug/sabiniwm-pistachio|" > target/session/launch
+  chmod +x $(pwd)/target/session/launch
+  sudo install -m 644 target/session/sabiniwm.desktop /usr/share/wayland-sessions/
