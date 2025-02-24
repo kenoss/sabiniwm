@@ -1,4 +1,3 @@
-use crate::backend::udev::SurfaceCompositionPolicy;
 use std::path::PathBuf;
 
 #[derive(Debug)]
@@ -24,8 +23,6 @@ pub(crate) struct EnvVarSabiniwm {
     pub drm_device_node: Option<PathBuf>,
     #[serde(default = "default_bool::<false>")]
     pub disable_10bit: bool,
-    #[serde(default = "Default::default")]
-    pub surface_composition_policy: SurfaceCompositionPolicy,
     #[serde(default = "default_bool::<true>")]
     pub enable_direct_scanout: bool,
 }
