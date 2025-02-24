@@ -13,26 +13,25 @@ use smithay::backend::allocator::dmabuf::Dmabuf;
 use smithay::backend::allocator::format::FormatSet;
 use smithay::backend::allocator::gbm::{GbmAllocator, GbmBufferFlags, GbmDevice};
 use smithay::backend::allocator::Fourcc;
-use smithay::backend::drm::compositor::DrmCompositor;
+use smithay::backend::drm::output::{DrmOutput, DrmOutputManager};
 use smithay::backend::drm::{
     CreateDrmNodeError, DrmAccessError, DrmDevice, DrmDeviceFd, DrmError, DrmEvent,
-    DrmEventMetadata, DrmNode, DrmSurface, GbmBufferedSurface, NodeType,
+    DrmEventMetadata, DrmNode, DrmSurface, NodeType,
 };
 use smithay::backend::egl::context::ContextPriority;
 use smithay::backend::egl::{self, EGLDevice, EGLDisplay};
 use smithay::backend::input::InputEvent;
 use smithay::backend::libinput::{LibinputInputBackend, LibinputSessionInterface};
-use smithay::backend::renderer::damage::{Error as OutputDamageTrackerError, OutputDamageTracker};
+use smithay::backend::renderer::damage::Error as OutputDamageTrackerError;
 use smithay::backend::renderer::element::memory::MemoryRenderBuffer;
-use smithay::backend::renderer::element::{AsRenderElements, RenderElement, RenderElementStates};
+use smithay::backend::renderer::element::AsRenderElements;
 use smithay::backend::renderer::gles::{GlesRenderer, GlesTexture};
 use smithay::backend::renderer::multigpu::gbm::GbmGlesBackend;
 use smithay::backend::renderer::multigpu::{GpuManager, MultiRenderer};
-use smithay::backend::renderer::sync::SyncPoint;
 #[cfg(feature = "egl")]
 use smithay::backend::renderer::ImportEgl;
 use smithay::backend::renderer::{
-    Bind, Color32F, DebugFlags, ExportMem, ImportAll, ImportDma, ImportMem, ImportMemWl, Offscreen,
+    Color32F, DebugFlags, ExportMem, ImportAll, ImportDma, ImportMem, ImportMemWl, Offscreen,
     Renderer,
 };
 use smithay::backend::session::libseat::{self, LibSeatSession};
@@ -51,7 +50,7 @@ use smithay::reexports::wayland_protocols::wp::linux_dmabuf::zv1::server::zwp_li
 use smithay::reexports::wayland_protocols::wp::presentation_time::server::wp_presentation_feedback;
 use smithay::reexports::wayland_server::protocol::wl_output::WlOutput;
 use smithay::reexports::{input as libinput, wayland_server};
-use smithay::utils::{DeviceFd, IsAlive, Logical, Physical, Point, Rectangle, Scale, Transform};
+use smithay::utils::{DeviceFd, IsAlive, Logical, Point, Scale, Transform};
 use smithay::wayland::compositor;
 use smithay::wayland::dmabuf::{DmabufFeedbackBuilder, DmabufGlobal, DmabufState};
 use smithay::wayland::drm_lease::{
@@ -285,12 +284,14 @@ impl BackendI for UdevBackend {
             // Update the per drm surface dmabuf feedback
             for surface_data in backend.surfaces.values_mut() {
                 surface_data.dmabuf_feedback = surface_data.dmabuf_feedback.take().or_else(|| {
-                    get_surface_dmabuf_feedback(
-                        self.selected_render_node,
-                        surface_data.render_node,
-                        gpus,
-                        &surface_data.compositor,
-                    )
+                    surface_data.drm_output.with_compositor(|compositor| {
+                        get_surface_dmabuf_feedback(
+                            self.selected_render_node,
+                            surface_data.render_node,
+                            gpus,
+                            &compositor.surface(),
+                        )
+                    })
                 });
             }
         }
@@ -302,7 +303,7 @@ impl BackendI for UdevBackend {
             .and_then(|x| x.ok())
         {
             if let Some(backend) = self.backends.get(&primary_node) {
-                let import_device = backend.drm.device_fd().clone();
+                let import_device = backend.drm_output_manager.device().device_fd().clone();
                 if supports_syncobj_eventfd(&import_device) {
                     let syncobj_state =
                         DrmSyncobjState::new::<SabiniwmState>(&inner.display_handle, import_device);
@@ -379,7 +380,7 @@ impl DrmLeaseHandler for SabiniwmState {
             .get(&node)
             .ok_or(LeaseRejected::default())?;
 
-        let mut builder = DrmLeaseBuilder::new(&backend.drm);
+        let mut builder = DrmLeaseBuilder::new(&backend.drm_output_manager.device());
         for conn in request.connectors {
             if let Some((_, crtc)) = backend
                 .non_desktop_connectors
@@ -389,7 +390,8 @@ impl DrmLeaseHandler for SabiniwmState {
                 builder.add_connector(conn);
                 builder.add_crtc(*crtc);
                 let planes = backend
-                    .drm
+                    .drm_output_manager
+                    .device()
                     .planes(crtc)
                     .map_err(LeaseRejected::with_cause)?;
                 let (primary_plane, primary_plane_claim) = planes
@@ -397,7 +399,8 @@ impl DrmLeaseHandler for SabiniwmState {
                     .iter()
                     .find_map(|plane| {
                         backend
-                            .drm
+                            .drm_output_manager
+                            .device()
                             .claim_plane(plane.handle, *crtc)
                             .map(|claim| (plane, claim))
                     })
@@ -405,7 +408,8 @@ impl DrmLeaseHandler for SabiniwmState {
                 builder.add_plane(primary_plane.handle, primary_plane_claim);
                 if let Some((cursor, claim)) = planes.cursor.iter().find_map(|plane| {
                     backend
-                        .drm
+                        .drm_output_manager
+                        .device()
                         .claim_plane(plane.handle, *crtc)
                         .map(|claim| (plane, claim))
                 }) {
@@ -451,168 +455,18 @@ pub(crate) enum SurfaceCompositionPolicy {
     UseDrmCompositor,
 }
 
-type RenderSurface =
-    GbmBufferedSurface<GbmAllocator<DrmDeviceFd>, Option<OutputPresentationFeedback>>;
-
-type GbmDrmCompositor = DrmCompositor<
-    GbmAllocator<DrmDeviceFd>,
-    GbmDevice<DrmDeviceFd>,
-    Option<OutputPresentationFeedback>,
-    DrmDeviceFd,
->;
-
-enum SurfaceComposition {
-    Surface {
-        surface: RenderSurface,
-        damage_tracker: OutputDamageTracker,
-        debug_flags: DebugFlags,
-    },
-    Compositor(GbmDrmCompositor),
-}
-
-struct SurfaceCompositorRenderResult<'a> {
-    rendered: bool,
-    states: RenderElementStates,
-    sync: Option<SyncPoint>,
-    damage: Option<&'a Vec<Rectangle<i32, Physical>>>,
-}
-
-impl SurfaceComposition {
-    fn frame_submitted(
-        &mut self,
-    ) -> Result<Option<Option<OutputPresentationFeedback>>, SwapBuffersError> {
-        match self {
-            SurfaceComposition::Compositor(c) => {
-                c.frame_submitted().map_err(Into::<SwapBuffersError>::into)
-            }
-            SurfaceComposition::Surface { surface, .. } => surface
-                .frame_submitted()
-                .map_err(Into::<SwapBuffersError>::into),
-        }
-    }
-
-    fn format(&self) -> smithay::reexports::gbm::Format {
-        match self {
-            SurfaceComposition::Compositor(c) => c.format(),
-            SurfaceComposition::Surface { surface, .. } => surface.format(),
-        }
-    }
-
-    fn surface(&self) -> &DrmSurface {
-        match self {
-            SurfaceComposition::Compositor(c) => c.surface(),
-            SurfaceComposition::Surface { surface, .. } => surface.surface(),
-        }
-    }
-
-    fn reset_buffers(&mut self) {
-        match self {
-            SurfaceComposition::Compositor(c) => c.reset_buffers(),
-            SurfaceComposition::Surface { surface, .. } => surface.reset_buffers(),
-        }
-    }
-
-    fn reset_state(&mut self) -> Result<(), SwapBuffersError> {
-        match self {
-            SurfaceComposition::Compositor(c) => {
-                c.reset_state().map_err(Into::<SwapBuffersError>::into)
-            }
-            SurfaceComposition::Surface { surface, .. } => surface
-                .surface()
-                .reset_state()
-                .map_err(Into::<SwapBuffersError>::into),
-        }
-    }
-
-    fn queue_frame(
-        &mut self,
-        sync: Option<SyncPoint>,
-        damage: Option<Vec<Rectangle<i32, Physical>>>,
-        user_data: Option<OutputPresentationFeedback>,
-    ) -> Result<(), SwapBuffersError> {
-        match self {
-            SurfaceComposition::Surface { surface, .. } => surface
-                .queue_buffer(sync, damage, user_data)
-                .map_err(Into::<SwapBuffersError>::into),
-            SurfaceComposition::Compositor(c) => c
-                .queue_frame(user_data)
-                .map_err(Into::<SwapBuffersError>::into),
-        }
-    }
-
-    fn render_frame<R, E, Target>(
-        &mut self,
-        renderer: &mut R,
-        elements: &[E],
-        clear_color: Color32F,
-        frame_mode: smithay::backend::drm::compositor::FrameMode,
-    ) -> Result<SurfaceCompositorRenderResult<'_>, SwapBuffersError>
-    where
-        R: Renderer + Bind<Dmabuf> + Bind<Target> + Offscreen<Target> + ExportMem,
-        <R as Renderer>::TextureId: 'static,
-        <R as Renderer>::Error: Into<SwapBuffersError> + Send + Sync + 'static,
-        E: RenderElement<R>,
-    {
-        match self {
-            SurfaceComposition::Surface {
-                surface,
-                damage_tracker,
-                debug_flags,
-            } => {
-                let (dmabuf, age) = surface
-                    .next_buffer()
-                    .map_err(Into::<SwapBuffersError>::into)?;
-                renderer
-                    .bind(dmabuf)
-                    .map_err(Into::<SwapBuffersError>::into)?;
-                let current_debug_flags = renderer.debug_flags();
-                renderer.set_debug_flags(*debug_flags);
-                let res = damage_tracker
-                    .render_output(renderer, age.into(), elements, clear_color)
-                    .map(|res| {
-                        let rendered = res.damage.is_some();
-                        SurfaceCompositorRenderResult {
-                            rendered,
-                            damage: res.damage,
-                            states: res.states,
-                            sync: rendered.then_some(res.sync),
-                        }
-                    })
-                    .map_err(|err| match err {
-                        OutputDamageTrackerError::Rendering(err) => err.into(),
-                        _ => unreachable!(),
-                    });
-                renderer.set_debug_flags(current_debug_flags);
-                res
-            }
-            SurfaceComposition::Compositor(compositor) => compositor
-                .render_frame(renderer, elements, clear_color, frame_mode)
-                .map(|render_frame_result| SurfaceCompositorRenderResult {
-                    rendered: !render_frame_result.is_empty,
-                    damage: None,
-                    states: render_frame_result.states,
-                    sync: None,
-                })
-                .map_err(|err| match err {
-                    smithay::backend::drm::compositor::RenderFrameError::PrepareFrame(err) => {
-                        err.into()
-                    }
-                    smithay::backend::drm::compositor::RenderFrameError::RenderFrame(
-                        OutputDamageTrackerError::Rendering(err),
-                    ) => err.into(),
-                    _ => unreachable!(),
-                }),
-        }
-    }
-}
-
 struct SurfaceData {
     primary_node: DrmNode,
     render_node: DrmNode,
     // Holds not to `drop()`.
     #[allow(unused)]
     wl_output_global: WlGlobal<SabiniwmState, WlOutput>,
-    compositor: SurfaceComposition,
+    drm_output: DrmOutput<
+        GbmAllocator<DrmDeviceFd>,
+        GbmDevice<DrmDeviceFd>,
+        Option<OutputPresentationFeedback>,
+        DrmDeviceFd,
+    >,
     dmabuf_feedback: Option<SurfaceDmabufFeedback>,
     // Note that a render loop is run per CRTC. This might be not good with multiple displays.
     // Possible solution would be running only one render loop (or one per GPU) with highest refresh
@@ -627,8 +481,12 @@ struct BackendData {
     non_desktop_connectors: Vec<(connector::Handle, crtc::Handle)>,
     leasing_global: Option<DrmLeaseState>,
     active_leases: Vec<DrmLease>,
-    gbm: GbmDevice<DrmDeviceFd>,
-    drm: DrmDevice,
+    drm_output_manager: DrmOutputManager<
+        GbmAllocator<DrmDeviceFd>,
+        GbmDevice<DrmDeviceFd>,
+        Option<OutputPresentationFeedback>,
+        DrmDeviceFd,
+    >,
     drm_scanner: DrmScanner,
     render_node: DrmNode,
     registration_token: RegistrationToken,
@@ -652,7 +510,7 @@ fn get_surface_dmabuf_feedback(
     selected_render_node: DrmNode,
     render_node: DrmNode,
     gpus: &mut GpuManager<GbmGlesBackend<GlesRenderer, DrmDeviceFd>>,
-    composition: &SurfaceComposition,
+    surface: &DrmSurface,
 ) -> Option<SurfaceDmabufFeedback> {
     let primary_formats = gpus
         .single_renderer(&selected_render_node)
@@ -667,7 +525,6 @@ fn get_surface_dmabuf_feedback(
         .copied()
         .collect::<FormatSet>();
 
-    let surface = composition.surface();
     let planes = surface.planes().clone();
 
     // We limit the scan-out tranche to formats we can also render from
@@ -769,13 +626,36 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
             .add_node(render_node, gbm.clone())
             .map_err(DeviceAddError::AddNode)?;
 
+        let allocator = GbmAllocator::new(
+            gbm.clone(),
+            GbmBufferFlags::RENDERING | GbmBufferFlags::SCANOUT,
+        );
+        let color_formats = if self.inner.envvar.sabiniwm.disable_10bit {
+            SUPPORTED_FORMATS_8BIT_ONLY
+        } else {
+            SUPPORTED_FORMATS
+        };
+        let mut renderer = self.backend.gpus.single_renderer(&render_node).unwrap();
+        let render_formats = renderer
+            .as_mut()
+            .egl_context()
+            .dmabuf_render_formats()
+            .clone();
+        let drm_output_manager = DrmOutputManager::new(
+            drm,
+            allocator,
+            gbm.clone(),
+            Some(gbm),
+            color_formats.iter().copied(),
+            render_formats,
+        );
+
         // FIXME
         self.backend.backends.insert(
             node,
             BackendData {
                 registration_token,
-                gbm,
-                drm,
+                drm_output_manager,
                 drm_scanner: DrmScanner::new(),
                 non_desktop_connectors: Vec::new(),
                 render_node,
@@ -820,11 +700,6 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
                 .gpus
                 .single_renderer(&device.render_node)
                 .unwrap();
-            let render_formats = renderer
-                .as_mut()
-                .egl_context()
-                .dmabuf_render_formats()
-                .clone();
 
             let output_name = format!(
                 "{}-{}",
@@ -834,14 +709,19 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
             info!(?crtc, "Trying to setup connector {}", output_name);
 
             let non_desktop = device
-                .drm
+                .drm_output_manager
+                .device()
                 .get_properties(connector.handle())
                 .ok()
                 .and_then(|props| {
                     let (info, value) = props
                         .into_iter()
                         .filter_map(|(handle, value)| {
-                            let info = device.drm.get_property(handle).ok()?;
+                            let info = device
+                                .drm_output_manager
+                                .device()
+                                .get_property(handle)
+                                .ok()?;
 
                             Some((info, value))
                         })
@@ -851,8 +731,10 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
                 })
                 .unwrap_or(false);
 
-            let display_info =
-                smithay_drm_extras::display_info::for_connector(&device.drm, connector.handle());
+            let display_info = smithay_drm_extras::display_info::for_connector(
+                device.drm_output_manager.device(),
+                connector.handle(),
+            );
             let make = display_info
                 .as_ref()
                 .and_then(|info| info.make())
@@ -916,78 +798,54 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
                     crtc,
                 });
 
-                let allocator = GbmAllocator::new(
-                    device.gbm.clone(),
-                    GbmBufferFlags::RENDERING | GbmBufferFlags::SCANOUT,
-                );
+                let driver = device
+                    .drm_output_manager
+                    .device()
+                    .get_driver()
+                    .wrap_err("query drm driver")?;
+                let mut planes = device
+                    .drm_output_manager
+                    .device()
+                    .planes(&crtc)
+                    .wrap_err("query crtc planes")?;
 
-                let color_formats = if self.inner.envvar.sabiniwm.disable_10bit {
-                    SUPPORTED_FORMATS_8BIT_ONLY
-                } else {
-                    SUPPORTED_FORMATS
-                };
+                // Using an overlay plane on a nvidia card breaks
+                if driver
+                    .name()
+                    .to_string_lossy()
+                    .to_lowercase()
+                    .contains("nvidia")
+                    || driver
+                        .description()
+                        .to_string_lossy()
+                        .to_lowercase()
+                        .contains("nvidia")
+                {
+                    planes.overlay = vec![];
+                }
 
-                let surface = device
-                    .drm
-                    .create_surface(crtc, mode, &[connector.handle()])
-                    .wrap_err("create drm surface")?;
-                let compositor = match &self.inner.envvar.sabiniwm.surface_composition_policy {
-                    SurfaceCompositionPolicy::UseGbmBufferedSurface => {
-                        let gbm_surface = GbmBufferedSurface::new(
-                            surface,
-                            allocator,
-                            color_formats,
-                            render_formats,
-                        )
-                        .wrap_err("create rendering surface")?;
-                        SurfaceComposition::Surface {
-                            surface: gbm_surface,
-                            damage_tracker: OutputDamageTracker::from_output(&output),
-                            debug_flags: self.backend.debug_flags,
-                        }
-                    }
-                    SurfaceCompositionPolicy::UseDrmCompositor => {
-                        let driver = device.drm.get_driver().wrap_err("query drm driver")?;
-                        let mut planes = surface.planes().clone();
+                let drm_output = device
+                .drm_output_manager
+                .initialize_output::<_, OutputRenderElement<UdevRenderer<'_>, WindowRenderElement<UdevRenderer<'_>>>>(
+                    crtc
+                ).build(
+                    &mut renderer,
+                    mode,
+                    &[connector.handle()],
+                    &output,
+                    Some(planes),
+                ).wrap_err("initialize drm output")?;
 
-                        // Using an overlay plane on a nvidia card breaks
-                        if driver
-                            .name()
-                            .to_string_lossy()
-                            .to_lowercase()
-                            .contains("nvidia")
-                            || driver
-                                .description()
-                                .to_string_lossy()
-                                .to_lowercase()
-                                .contains("nvidia")
-                        {
-                            planes.overlay = vec![];
-                        }
+                let dmabuf_feedback = drm_output.with_compositor(|compositor| {
+                    compositor.set_debug_flags(self.backend.debug_flags);
 
-                        let mut compositor = DrmCompositor::new(
-                            &output,
-                            surface,
-                            Some(planes),
-                            allocator,
-                            device.gbm.clone(),
-                            color_formats.iter().copied(),
-                            render_formats,
-                            device.drm.cursor_size(),
-                            Some(device.gbm.clone()),
-                        )
-                        .wrap_err("DrmCompositor::new()")?;
-                        compositor.set_debug_flags(self.backend.debug_flags);
-                        SurfaceComposition::Compositor(compositor)
-                    }
-                };
-
-                let dmabuf_feedback = get_surface_dmabuf_feedback(
-                    self.backend.selected_render_node,
-                    device.render_node,
-                    &mut self.backend.gpus,
-                    &compositor,
-                );
+                    get_surface_dmabuf_feedback(
+                        self.backend.selected_render_node,
+                        device.render_node,
+                        &mut self.backend.gpus,
+                        compositor.surface(),
+                    )
+                });
 
                 let mut render_loop =
                     RenderLoop::new(self.inner.loop_handle.clone(), &output, move |state| {
@@ -999,14 +857,17 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
                     primary_node: node,
                     render_node: device.render_node,
                     wl_output_global,
-                    compositor,
+                    drm_output,
                     dmabuf_feedback,
                     render_loop,
                 };
 
                 device.surfaces.insert(crtc, surface);
 
-                self.schedule_initial_render(node, crtc, self.inner.loop_handle.clone());
+                // Calling this doesn't affect the result. I used it to compare with the previous
+                // commit and identify the problem.
+                //
+                // self.schedule_initial_render(node, crtc, self.inner.loop_handle.clone());
             }
 
             Ok(())
@@ -1069,7 +930,10 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
             return;
         };
 
-        let scan_result = match device.drm_scanner.scan_connectors(&device.drm) {
+        let scan_result = match device
+            .drm_scanner
+            .scan_connectors(device.drm_output_manager.device())
+        {
             Ok(scan_result) => scan_result,
             Err(err) => {
                 warn!(?err, "Failed to scan connectors");
@@ -1165,7 +1029,7 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
         };
 
         let should_schedule_render = match surface
-            .compositor
+            .drm_output
             .frame_submitted()
             .map_err(Into::<SwapBuffersError>::into)
         {
@@ -1288,7 +1152,7 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
         let mut renderer = if selected_render_node == render_node {
             self.backend.gpus.single_renderer(&render_node)
         } else {
-            let format = surface.compositor.format();
+            let format = surface.drm_output.format();
             self.backend
                 .gpus
                 .renderer(&selected_render_node, &render_node, format)
@@ -1359,7 +1223,8 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
                             // most likely we hit this after a tty switch when a foreign master changed CRTC <-> connector bindings
                             // and we run in a mismatch
                             device
-                                .drm
+                                .drm_output_manager
+                                .device_mut()
                                 .reset_state()
                                 .expect("failed to reset drm device");
                             true
@@ -1526,17 +1391,23 @@ impl InnerState {
         R: ExportMem + Offscreen<GlesTexture> + smithay::backend::renderer::Bind<Dmabuf>,
         <R as Renderer>::Error: Into<smithay::backend::SwapBuffersError> + Send + Sync + 'static,
     {
-        let SurfaceCompositorRenderResult {
-            rendered,
-            states,
-            sync,
-            damage,
-        } = surface.compositor.render_frame::<_, _, GlesTexture>(
-            renderer,
-            &elements,
-            clear_color,
-            frame_mode,
-        )?;
+        let (rendered, states) = surface
+            .drm_output
+            .render_frame(renderer, &elements, clear_color, frame_mode)
+            .map(|render_frame_result| (!render_frame_result.is_empty, render_frame_result.states))
+            .inspect(|_| {
+                warn!("render_surface_data(), render_frame(), ok");
+            })
+            .inspect_err(|e| {
+                warn!("render_surface_data(), render_frame(), e = {:?}", e);
+            })
+            .map_err(|e| match e {
+                smithay::backend::drm::compositor::RenderFrameError::PrepareFrame(e) => e.into(),
+                smithay::backend::drm::compositor::RenderFrameError::RenderFrame(
+                    OutputDamageTrackerError::Rendering(e),
+                ) => e.into(),
+                _ => unreachable!(),
+            })?;
 
         self.post_repaint(
             output,
@@ -1547,10 +1418,15 @@ impl InnerState {
 
         if rendered {
             let output_presentation_feedback = self.take_presentation_feedback(output, &states);
-            let damage = damage.cloned();
             surface
-                .compositor
-                .queue_frame(sync, damage, Some(output_presentation_feedback))
+                .drm_output
+                .queue_frame(Some(output_presentation_feedback))
+                .inspect(|_| {
+                    warn!("render_surface_data(), queue_frame(), ok");
+                })
+                .inspect_err(|e| {
+                    warn!("render_surface_data(), queue_frame(), e = {:?}", e);
+                })
                 .map_err(Into::<SwapBuffersError>::into)?;
         }
 
@@ -1563,16 +1439,30 @@ fn initial_render(
     renderer: &mut UdevRenderer<'_>,
     frame_mode: smithay::backend::drm::compositor::FrameMode,
 ) -> Result<(), SwapBuffersError> {
+    warn!("initial_render(), {}:{}", file!(), line!());
+
+    let _ = surface
+        .drm_output
+        .render_frame::<_, CustomRenderElement<_>>(renderer, &[], CLEAR_COLOR, frame_mode)
+        .inspect(|x| {
+            warn!(
+                "initial_render(), render_frame(), ok, x = {:?}, rendered = {}",
+                x, !x.is_empty
+            );
+        })
+        .inspect_err(|e| {
+            warn!("initial_render(), render_frame(), e = {:?}", e);
+        });
     surface
-        .compositor
-        .render_frame::<_, CustomRenderElement<_>, GlesTexture>(
-            renderer,
-            &[],
-            CLEAR_COLOR,
-            frame_mode,
-        )?;
-    surface.compositor.queue_frame(None, None, None)?;
-    surface.compositor.reset_buffers();
+        .drm_output
+        .queue_frame(None)
+        .inspect(|_| {
+            warn!("initial_render(), queue_frame(), ok");
+        })
+        .inspect_err(|e| {
+            warn!("initial_render(), queue_frame(), e = {:?}", e);
+        })?;
+    surface.drm_output.reset_buffers();
 
     Ok(())
 }
@@ -1709,7 +1599,7 @@ impl EventHandler<smithay::backend::session::Event>
                 info!("pausing session");
 
                 for backend in self.backend.backends.values_mut() {
-                    backend.drm.pause();
+                    backend.drm_output_manager.device_mut().pause();
                     backend.active_leases.clear();
                     if let Some(lease_global) = backend.leasing_global.as_mut() {
                         lease_global.suspend();
@@ -1734,17 +1624,14 @@ impl EventHandler<smithay::backend::session::Event>
                     // state as is and assume it will just work. If this assumption fails
                     // we will try to reset the state when trying to queue a frame.
                     backend
-                        .drm
+                        .drm_output_manager
+                        .device_mut()
                         .activate(false)
                         .expect("failed to activate drm backend");
                     if let Some(lease_global) = backend.leasing_global.as_mut() {
                         lease_global.resume::<SabiniwmState>();
                     }
                     for surface in backend.surfaces.values_mut() {
-                        if let Err(err) = surface.compositor.reset_state() {
-                            warn!("Failed to reset drm surface state: {}", err);
-                        }
-
                         surface.render_loop.start();
                     }
                 }
