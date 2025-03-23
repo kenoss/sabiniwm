@@ -863,6 +863,13 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
                 };
 
                 device.surfaces.insert(crtc, surface);
+
+                device
+                    .surfaces
+                    .get_mut(&crtc)
+                    .unwrap()
+                    .render_loop
+                    .schedule_now();
             }
 
             Ok(())

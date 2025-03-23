@@ -270,6 +270,10 @@ where
         self.timer.stop();
     }
 
+    pub fn schedule_now(&mut self) {
+        let _ = self.timer.schedule_next(Instant::now());
+    }
+
     pub fn on_render_frame(&mut self, should_schedule_render: bool) {
         if !should_schedule_render {
             return;
