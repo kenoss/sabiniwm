@@ -946,9 +946,9 @@ dependencies = [
 
 [[package]]
 name = "libseat"
-version = "0.2.1"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "54a0adf8d8607a73a5b74cbe4132f57cb349e4bf860103cd089461bbcbc9907e"
+checksum = "c23a245bbd5790c690791c4fe6eefafe4c75851226288a71cb657601135aa00c"
 dependencies = [
  "errno",
  "libseat-sys",
@@ -957,9 +957,9 @@ dependencies = [
 
 [[package]]
 name = "libseat-sys"
-version = "0.1.7"
+version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3671cb5e03871f1d6bf0b3b5daa9275549e348fa6359e0f9adb910ca163d4c34"
+checksum = "134621e50557e8698a96ccff3eadbc6f4b449d5d12f8aa48fcef8d40b4b02725"
 dependencies = [
  "pkg-config",
 ]
@@ -1847,7 +1847,7 @@ checksum = "3c5e1a9a646d36c3599cd173a41282daf47c44583ad367b8e6837255952e5c67"
 [[package]]
 name = "smithay"
 version = "0.5.0"
-source = "git+https://github.com/Smithay/smithay?rev=c579dd9#c579dd9c1269454ec38d78330721e36e3afa4c16"
+source = "git+https://github.com/Smithay/smithay?rev=1c7850d#1c7850ddbb7e5c45762fd33dbc41717294413c0c"
 dependencies = [
  "appendlist",
  "ash",
