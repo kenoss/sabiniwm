@@ -1025,15 +1025,19 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
             return;
         };
 
-        let output = if let Some(output) = self.inner.space.outputs().find(|o| {
-            o.user_data().get::<UdevOutputId>()
-                == Some(&UdevOutputId {
-                    primary_node: surface.primary_node,
-                    crtc,
-                })
-        }) {
-            output.clone()
-        } else {
+        let Some(output) = self
+            .inner
+            .space
+            .outputs()
+            .find(|o| {
+                o.user_data().get::<UdevOutputId>()
+                    == Some(&UdevOutputId {
+                        primary_node: surface.primary_node,
+                        crtc,
+                    })
+            })
+            .cloned()
+        else {
             // somehow we got called with an invalid output
             return;
         };
@@ -1138,15 +1142,19 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
             return;
         };
 
-        let output = if let Some(output) = self.inner.space.outputs().find(|o| {
-            o.user_data().get::<UdevOutputId>()
-                == Some(&UdevOutputId {
-                    primary_node: surface.primary_node,
-                    crtc,
-                })
-        }) {
-            output.clone()
-        } else {
+        let Some(output) = self
+            .inner
+            .space
+            .outputs()
+            .find(|o| {
+                o.user_data().get::<UdevOutputId>()
+                    == Some(&UdevOutputId {
+                        primary_node: surface.primary_node,
+                        crtc,
+                    })
+            })
+            .cloned()
+        else {
             // somehow we got called with an invalid output
             return;
         };
