@@ -1347,13 +1347,13 @@ where
 }
 
 impl InnerState {
-    fn frame_mode(&self) -> smithay::backend::drm::compositor::FrameMode {
-        use smithay::backend::drm::compositor::FrameMode;
+    fn frame_mode(&self) -> smithay::backend::drm::compositor::FrameFlags {
+        use smithay::backend::drm::compositor::FrameFlags;
 
         if self.envvar.sabiniwm.enable_direct_scanout {
-            FrameMode::ALL
+            FrameFlags::DEFAULT
         } else {
-            FrameMode::COMPOSITE
+            FrameFlags::empty()
         }
     }
 
@@ -1364,7 +1364,7 @@ impl InnerState {
         output: &smithay::output::Output,
         elements: Vec<OutputRenderElement<R, WindowRenderElement<R>>>,
         clear_color: Color32F,
-        frame_mode: smithay::backend::drm::compositor::FrameMode,
+        frame_mode: smithay::backend::drm::compositor::FrameFlags,
     ) -> Result<bool, SwapBuffersError>
     where
         R: Renderer + ImportAll + ImportMem,
