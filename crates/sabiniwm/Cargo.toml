@@ -24,7 +24,7 @@ itertools = "0.12.1"
 maplit = "1.0.2"
 serde = { version = "1.0.213", features = ["derive"] }
 serde_json = "1.0.133"
-smithay-drm-extras = { git = "https://github.com/Smithay/smithay", rev = "0ae71d6", optional = true }
+smithay-drm-extras = { git = "https://github.com/Smithay/smithay", rev = "c579dd9", optional = true }
 thin_delegate = "0.2.0"
 thiserror = "1.0.60"
 tracing = "0.1.40"
@@ -34,7 +34,7 @@ xkbcommon = "0.8.0"
 
 [dependencies.smithay]
 git = "https://github.com/Smithay/smithay"
-rev = "b4cf986"
+rev = "c579dd9"
 default-features = false
 features = [
     "backend_winit",
