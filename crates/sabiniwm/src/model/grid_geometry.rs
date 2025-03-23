@@ -1,5 +1,5 @@
 use crate::view::window::Thickness;
-use smithay::utils::{Logical, Rectangle};
+use smithay::utils::{Logical, Point, Rectangle, Size};
 use std::ops::Range;
 
 #[allow(dead_code)]
@@ -22,7 +22,9 @@ pub trait RectangleExt: Sized {
 
 impl RectangleExt for Rectangle<i32, Logical> {
     fn from_ranges(xr: Range<i32>, yr: Range<i32>) -> Rectangle<i32, Logical> {
-        Rectangle::from_loc_and_size((xr.start, yr.start), (xr.end - xr.start, yr.end - yr.start))
+        let loc = Point::from((xr.start, yr.start));
+        let size = Size::from((xr.end - xr.start, yr.end - yr.start));
+        Rectangle::new(loc, size)
     }
 
     fn split_vertically_2(&self, specs: [SplitSpec; 2]) -> [Rectangle<i32, Logical>; 2] {
@@ -71,11 +73,11 @@ impl RectangleExt for Rectangle<i32, Logical> {
             left,
         } = dim;
         let (top, right, bottom, left) = (top as i32, right as i32, bottom as i32, left as i32);
-        let loc = (self.loc.x + right, self.loc.y + top);
+        let loc = Point::from((self.loc.x + right, self.loc.y + top));
         let w = right + left;
         let h = top + bottom;
-        let size = (0.max(self.size.w - w), 0.max(self.size.h - h));
-        Rectangle::from_loc_and_size(loc, size)
+        let size = Size::from((0.max(self.size.w - w), 0.max(self.size.h - h)));
+        Rectangle::new(loc, size)
     }
 
     fn inflate(&self, dim: Thickness) -> Rectangle<i32, Logical> {
@@ -86,11 +88,11 @@ impl RectangleExt for Rectangle<i32, Logical> {
             left,
         } = dim;
         let (top, right, bottom, left) = (top as i32, right as i32, bottom as i32, left as i32);
-        let loc = (self.loc.x - right, self.loc.y - top);
+        let loc = Point::from((self.loc.x - right, self.loc.y - top));
         let w = right + left;
         let h = top + bottom;
-        let size = (self.size.w + w, self.size.h + h);
-        Rectangle::from_loc_and_size(loc, size)
+        let size = Size::from((self.size.w + w, self.size.h + h));
+        Rectangle::new(loc, size)
     }
 }
 
