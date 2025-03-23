@@ -349,7 +349,7 @@ mod window {
         use smithay::backend::renderer::element::solid::SolidColorRenderElement;
         use smithay::backend::renderer::element::surface::WaylandSurfaceRenderElement;
         use smithay::backend::renderer::element::AsRenderElements;
-        use smithay::backend::renderer::{ImportAll, ImportMem, Renderer, Texture};
+        use smithay::backend::renderer::{ImportAll, ImportMem, Renderer, RendererSuper, Texture};
 
         #[derive(derive_more::From)]
         #[thin_delegate::register]
@@ -365,7 +365,7 @@ mod window {
         impl<R> smithay::backend::renderer::element::Element for WindowRenderElement<R>
         where
             R: smithay::backend::renderer::Renderer,
-            <R as smithay::backend::renderer::Renderer>::TextureId: 'static,
+            <R as smithay::backend::renderer::RendererSuper>::TextureId: 'static,
             R: ImportAll + ImportMem,
         {
         }
@@ -374,7 +374,7 @@ mod window {
         impl<R> smithay::backend::renderer::element::RenderElement<R> for WindowRenderElement<R>
         where
             R: smithay::backend::renderer::Renderer,
-            <R as smithay::backend::renderer::Renderer>::TextureId: 'static,
+            <R as smithay::backend::renderer::RendererSuper>::TextureId: 'static,
             R: ImportAll + ImportMem,
         {
         }
@@ -382,7 +382,7 @@ mod window {
         impl<R> AsRenderElements<R> for Window
         where
             R: Renderer + ImportAll + ImportMem,
-            <R as Renderer>::TextureId: Texture + Clone + 'static,
+            <R as RendererSuper>::TextureId: Texture + Clone + 'static,
         {
             type RenderElement = WindowRenderElement<R>;
 

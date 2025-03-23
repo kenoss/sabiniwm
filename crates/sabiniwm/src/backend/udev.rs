@@ -32,7 +32,7 @@ use smithay::backend::renderer::multigpu::{GpuManager, MultiRenderer};
 use smithay::backend::renderer::ImportEgl;
 use smithay::backend::renderer::{
     Color32F, DebugFlags, ExportMem, ImportAll, ImportDma, ImportMem, ImportMemWl, Offscreen,
-    Renderer,
+    Renderer, RendererSuper,
 };
 use smithay::backend::session::libseat::{self, LibSeatSession};
 use smithay::backend::session::{Event as SessionEvent, Session};
@@ -1377,7 +1377,8 @@ impl InnerState {
         R: Renderer + ImportAll + ImportMem,
         R::TextureId: Clone + 'static,
         R: ExportMem + Offscreen<GlesTexture> + smithay::backend::renderer::Bind<Dmabuf>,
-        <R as Renderer>::Error: Into<smithay::backend::SwapBuffersError> + Send + Sync + 'static,
+        <R as RendererSuper>::Error:
+            Into<smithay::backend::SwapBuffersError> + Send + Sync + 'static,
     {
         let (rendered, states) = surface
             .drm_output

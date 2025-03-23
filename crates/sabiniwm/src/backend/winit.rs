@@ -282,15 +282,12 @@ impl SabiniwmStateWithConcreteBackend<'_, WinitBackend> {
             };
         let cursor_pos = self.inner.pointer.current_location();
 
-        let render_res = self.backend.backend.bind().and_then(|_| {
-            let age = if *full_redraw > 0 {
-                0
-            } else {
-                self.backend.backend.buffer_age().unwrap_or(0)
-            };
-
-            let renderer = self.backend.backend.renderer();
-
+        let age = if *full_redraw > 0 {
+            0
+        } else {
+            self.backend.backend.buffer_age().unwrap_or(0)
+        };
+        let render_res = self.backend.backend.bind().and_then(|(renderer, mut fb)| {
             let mut elements = Vec::<CustomRenderElement<GlesRenderer>>::new();
 
             let cursor_lefttop_pos = (cursor_pos - cursor_hotspot.to_f64())
@@ -320,7 +317,7 @@ impl SabiniwmStateWithConcreteBackend<'_, WinitBackend> {
                 self.inner
                     .make_output_elements(renderer, &self.backend.output, elements);
             // TODO: Integrate it with the below `match`.
-            match damage_tracker.render_output(renderer, age, &elements, clear_color) {
+            match damage_tracker.render_output(renderer, &mut fb, age, &elements, clear_color) {
                 Ok(x) => Ok(x),
                 Err(smithay::backend::renderer::damage::Error::Rendering(e)) => Err(e.into()),
                 Err(_) => unreachable!(),

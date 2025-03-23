@@ -62,7 +62,7 @@ pub(crate) mod smithay {
                     /// Draw this element
                     fn draw(
                         &self,
-                        frame: &mut <R as Renderer>::Frame<'_>,
+                        frame: &mut R::Frame<'_, '_>,
                         src: Rectangle<f64, BufferCoords>,
                         dst: Rectangle<i32, Physical>,
                         damage: &[Rectangle<i32, Physical>],

@@ -50,7 +50,7 @@ where
 impl<R> smithay::backend::renderer::element::Element for PointerRenderElement<R>
 where
     R: smithay::backend::renderer::Renderer,
-    <R as smithay::backend::renderer::Renderer>::TextureId: 'static,
+    <R as smithay::backend::renderer::RendererSuper>::TextureId: 'static,
     R: ImportAll + ImportMem,
 {
 }
@@ -59,7 +59,7 @@ where
 impl<R> smithay::backend::renderer::element::RenderElement<R> for PointerRenderElement<R>
 where
     R: smithay::backend::renderer::Renderer,
-    <R as smithay::backend::renderer::Renderer>::TextureId: 'static,
+    <R as smithay::backend::renderer::RendererSuper>::TextureId: 'static,
     R: ImportAll + ImportMem,
 {
 }

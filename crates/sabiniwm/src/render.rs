@@ -24,7 +24,7 @@ where
 impl<R> smithay::backend::renderer::element::Element for CustomRenderElement<R>
 where
     R: smithay::backend::renderer::Renderer,
-    <R as smithay::backend::renderer::Renderer>::TextureId: 'static,
+    <R as smithay::backend::renderer::RendererSuper>::TextureId: 'static,
     R: ImportAll + ImportMem,
 {
 }
@@ -33,7 +33,7 @@ where
 impl<R> smithay::backend::renderer::element::RenderElement<R> for CustomRenderElement<R>
 where
     R: smithay::backend::renderer::Renderer,
-    <R as smithay::backend::renderer::Renderer>::TextureId: 'static,
+    <R as smithay::backend::renderer::RendererSuper>::TextureId: 'static,
     R: ImportAll + ImportMem,
 {
 }
@@ -68,7 +68,7 @@ where
 impl<R, E> smithay::backend::renderer::element::Element for OutputRenderElement<R, E>
 where
     R: smithay::backend::renderer::Renderer,
-    <R as smithay::backend::renderer::Renderer>::TextureId: 'static,
+    <R as smithay::backend::renderer::RendererSuper>::TextureId: 'static,
     E: smithay::backend::renderer::element::Element
         + smithay::backend::renderer::element::RenderElement<R>,
     R: ImportAll + ImportMem,
@@ -79,7 +79,7 @@ where
 impl<R, E> smithay::backend::renderer::element::RenderElement<R> for OutputRenderElement<R, E>
 where
     R: smithay::backend::renderer::Renderer,
-    <R as smithay::backend::renderer::Renderer>::TextureId: 'static,
+    <R as smithay::backend::renderer::RendererSuper>::TextureId: 'static,
     E: smithay::backend::renderer::element::Element
         + smithay::backend::renderer::element::RenderElement<R>,
     R: ImportAll + ImportMem,
