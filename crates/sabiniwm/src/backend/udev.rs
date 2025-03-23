@@ -1398,6 +1398,8 @@ impl InnerState {
             self.clock.now().into(),
         );
 
+        self.update_primary_scanout_output(output, &states);
+
         if rendered {
             let output_presentation_feedback = self.take_presentation_feedback(output, &states);
             surface
