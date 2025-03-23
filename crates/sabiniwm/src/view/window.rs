@@ -365,7 +365,7 @@ mod window {
         impl<R> smithay::backend::renderer::element::Element for WindowRenderElement<R>
         where
             R: smithay::backend::renderer::Renderer,
-            <R as smithay::backend::renderer::RendererSuper>::TextureId: 'static,
+            R::TextureId: 'static,
             R: ImportAll + ImportMem,
         {
         }
@@ -374,7 +374,7 @@ mod window {
         impl<R> smithay::backend::renderer::element::RenderElement<R> for WindowRenderElement<R>
         where
             R: smithay::backend::renderer::Renderer,
-            <R as smithay::backend::renderer::RendererSuper>::TextureId: 'static,
+            R::TextureId: 'static,
             R: ImportAll + ImportMem,
         {
         }
