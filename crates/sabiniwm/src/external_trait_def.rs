@@ -35,8 +35,7 @@ pub(crate) mod smithay {
                         commit: Option<CommitCounter>,
                     ) -> DamageSet<i32, Physical> {
                         if commit != Some(self.current_commit()) {
-                            DamageSet::from_slice(&[Rectangle::from_loc_and_size(
-                                (0, 0),
+                            DamageSet::from_slice(&[Rectangle::from_size(
                                 self.geometry(scale).size,
                             )])
                         } else {

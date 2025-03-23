@@ -303,7 +303,7 @@ impl SabiniwmState {
 
         let keymap = config_delegate.make_keymap(backend.is_udev());
 
-        let rect = Rectangle::from_loc_and_size((0, 0), (1280, 720));
+        let rect = Rectangle::from_size((1280, 720).into());
         let view = View::new(&config_delegate, rect);
 
         Ok(SabiniwmState {

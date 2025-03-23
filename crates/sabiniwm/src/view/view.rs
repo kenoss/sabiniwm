@@ -175,7 +175,7 @@ impl View {
         size: Size<i32, Logical>,
         space: &mut smithay::desktop::Space<Window>,
     ) {
-        self.state.rect = Rectangle::from_loc_and_size((0, 0), size);
+        self.state.rect = Rectangle::from_size(size);
         self.layout(space);
     }
 
