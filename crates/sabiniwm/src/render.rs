@@ -114,7 +114,7 @@ pub(crate) struct SurfaceDmabufFeedback {
 
 impl SabiniwmState {
     pub(crate) fn pre_repaint(&mut self, output: &Output) {
-        use smithay::desktop::utils::{surface_primary_scanout_output, with_surfaces_surface_tree};
+        use smithay::desktop::utils::with_surfaces_surface_tree;
         use smithay::input::pointer::CursorImageStatus;
         use smithay::reexports::wayland_server::Resource;
         use smithay::wayland::commit_timing::CommitTimerBarrierStateUserData;
@@ -128,40 +128,28 @@ impl SabiniwmState {
 
         if let CursorImageStatus::Surface(surface) = &self.inner.cursor_status {
             with_surfaces_surface_tree(surface, |surface, states| {
-                let clear_commit_timer = surface_primary_scanout_output(surface, states)
-                    .map(|primary_output| &primary_output == output)
-                    .unwrap_or(true);
-
-                if clear_commit_timer {
-                    if let Some(mut commit_timer_state) = states
-                        .data_map
-                        .get::<CommitTimerBarrierStateUserData>()
-                        .map(|commit_timer| commit_timer.lock().unwrap())
-                    {
-                        commit_timer_state.signal_until(now);
-                        let client = surface.client().unwrap();
-                        clients.insert(client.id(), client);
-                    }
+                if let Some(mut commit_timer_state) = states
+                    .data_map
+                    .get::<CommitTimerBarrierStateUserData>()
+                    .map(|commit_timer| commit_timer.lock().unwrap())
+                {
+                    commit_timer_state.signal_until(now);
+                    let client = surface.client().unwrap();
+                    clients.insert(client.id(), client);
                 }
             });
         }
 
         if let Some(surface) = self.inner.dnd_icon.as_ref().map(|icon| &icon.surface) {
             with_surfaces_surface_tree(surface, |surface, states| {
-                let clear_commit_timer = surface_primary_scanout_output(surface, states)
-                    .map(|primary_output| &primary_output == output)
-                    .unwrap_or(true);
-
-                if clear_commit_timer {
-                    if let Some(mut commit_timer_state) = states
-                        .data_map
-                        .get::<CommitTimerBarrierStateUserData>()
-                        .map(|commit_timer| commit_timer.lock().unwrap())
-                    {
-                        commit_timer_state.signal_until(now);
-                        let client = surface.client().unwrap();
-                        clients.insert(client.id(), client);
-                    }
+                if let Some(mut commit_timer_state) = states
+                    .data_map
+                    .get::<CommitTimerBarrierStateUserData>()
+                    .map(|commit_timer| commit_timer.lock().unwrap())
+                {
+                    commit_timer_state.signal_until(now);
+                    let client = surface.client().unwrap();
+                    clients.insert(client.id(), client);
                 }
             });
         }
@@ -170,20 +158,14 @@ impl SabiniwmState {
             let map = smithay::desktop::layer_map_for_output(output);
             for layer_surface in map.layers() {
                 layer_surface.with_surfaces(|surface, states| {
-                    let clear_commit_timer = surface_primary_scanout_output(surface, states)
-                        .map(|primary_output| &primary_output == output)
-                        .unwrap_or(true);
-
-                    if clear_commit_timer {
-                        if let Some(mut commit_timer_state) = states
-                            .data_map
-                            .get::<CommitTimerBarrierStateUserData>()
-                            .map(|commit_timer| commit_timer.lock().unwrap())
-                        {
-                            commit_timer_state.signal_until(now);
-                            let client = surface.client().unwrap();
-                            clients.insert(client.id(), client);
-                        }
+                    if let Some(mut commit_timer_state) = states
+                        .data_map
+                        .get::<CommitTimerBarrierStateUserData>()
+                        .map(|commit_timer| commit_timer.lock().unwrap())
+                    {
+                        commit_timer_state.signal_until(now);
+                        let client = surface.client().unwrap();
+                        clients.insert(client.id(), client);
                     }
                 });
             }
@@ -193,20 +175,14 @@ impl SabiniwmState {
 
         for window in self.inner.space.elements() {
             window.smithay_window().with_surfaces(|surface, states| {
-                let clear_commit_timer = surface_primary_scanout_output(surface, states)
-                    .map(|primary_output| &primary_output == output)
-                    .unwrap_or(true);
-
-                if clear_commit_timer {
-                    if let Some(mut commit_timer_state) = states
-                        .data_map
-                        .get::<CommitTimerBarrierStateUserData>()
-                        .map(|commit_timer| commit_timer.lock().unwrap())
-                    {
-                        commit_timer_state.signal_until(now);
-                        let client = surface.client().unwrap();
-                        clients.insert(client.id(), client);
-                    }
+                if let Some(mut commit_timer_state) = states
+                    .data_map
+                    .get::<CommitTimerBarrierStateUserData>()
+                    .map(|commit_timer| commit_timer.lock().unwrap())
+                {
+                    commit_timer_state.signal_until(now);
+                    let client = surface.client().unwrap();
+                    clients.insert(client.id(), client);
                 }
             });
         }
