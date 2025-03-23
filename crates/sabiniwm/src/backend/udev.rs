@@ -27,7 +27,7 @@ use smithay::backend::renderer::element::memory::MemoryRenderBuffer;
 use smithay::backend::renderer::element::AsRenderElements;
 use smithay::backend::renderer::gles::{GlesRenderer, GlesTexture};
 use smithay::backend::renderer::multigpu::gbm::GbmGlesBackend;
-use smithay::backend::renderer::multigpu::{GpuManager, MultiRenderer};
+use smithay::backend::renderer::multigpu::GpuManager;
 #[cfg(feature = "egl")]
 use smithay::backend::renderer::ImportEgl;
 use smithay::backend::renderer::{
@@ -77,13 +77,6 @@ const SUPPORTED_FORMATS: &[Fourcc] = &[
     Fourcc::Argb8888,
 ];
 const SUPPORTED_FORMATS_8BIT_ONLY: &[Fourcc] = &[Fourcc::Abgr8888, Fourcc::Argb8888];
-
-type UdevRenderer<'a> = MultiRenderer<
-    'a,
-    'a,
-    GbmGlesBackend<GlesRenderer, DrmDeviceFd>,
-    GbmGlesBackend<GlesRenderer, DrmDeviceFd>,
->;
 
 #[derive(Debug, PartialEq)]
 struct UdevOutputId {
@@ -825,16 +818,17 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
                 }
 
                 let drm_output = device
-                .drm_output_manager
-                .initialize_output::<_, OutputRenderElement<UdevRenderer<'_>, WindowRenderElement<UdevRenderer<'_>>>>(
-                    crtc,
-                    mode,
-                    &[connector.handle()],
-                    &output,
-                    Some(planes),
-                    &mut renderer,
-                    &DrmOutputRenderElements::default(),
-                ).wrap_err("initialize drm output")?;
+                    .drm_output_manager
+                    .initialize_output::<_, OutputRenderElement<_, WindowRenderElement<_>>>(
+                        crtc,
+                        mode,
+                        &[connector.handle()],
+                        &output,
+                        Some(planes),
+                        &mut renderer,
+                        &DrmOutputRenderElements::default(),
+                    )
+                    .wrap_err("initialize drm output")?;
 
                 let dmabuf_feedback = drm_output.with_compositor(|compositor| {
                     compositor.set_debug_flags(self.backend.debug_flags);
@@ -929,15 +923,14 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
             .gpus
             .single_renderer(&device.render_node)
             .unwrap();
-        let _ = device.drm_output_manager.try_to_restore_modifiers::<_, OutputRenderElement<
-            UdevRenderer<'_>,
-            WindowRenderElement<UdevRenderer<'_>>,
-        >>(
-            &mut renderer,
-            // FIXME: For a flicker free operation we should return the actual elements for this output..
-            // Instead we just use black to "simulate" a modeset :)
-            &DrmOutputRenderElements::default(),
-        );
+        let _ = device
+            .drm_output_manager
+            .try_to_restore_modifiers::<_, OutputRenderElement<_, WindowRenderElement<_>>>(
+                &mut renderer,
+                // FIXME: For a flicker free operation we should return the actual elements for this output..
+                // Instead we just use black to "simulate" a modeset :)
+                &DrmOutputRenderElements::default(),
+            );
     }
 
     fn device_changed(&mut self, node: DrmNode) {
