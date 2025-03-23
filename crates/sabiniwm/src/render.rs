@@ -229,10 +229,11 @@ impl InnerState {
                         smithay::utils::Scale::from(output.current_scale().fractional_scale());
 
                     if let Some(lock_surface) = &output_assoc.lock_surface {
+                        let surface = lock_surface.wl_surface();
                         elements.extend(
                             render_elements_from_surface_tree(
                                 renderer,
-                                lock_surface.wl_surface(),
+                                surface,
                                 (0, 0),
                                 output_scale,
                                 1.,
@@ -368,8 +369,9 @@ impl InnerState {
             SessionLockState::NotLocked => {}
             SessionLockState::Locked(output_assoc) => {
                 if let Some(lock_surface) = &output_assoc.lock_surface {
+                    let surface = lock_surface.wl_surface();
                     with_surface_tree_downward(
-                        lock_surface.wl_surface(),
+                        surface,
                         (),
                         |_, _, _| TraversalAction::DoChildren(()),
                         |surface, states, _| {
@@ -593,8 +595,9 @@ impl InnerState {
                 SessionLockState::NotLocked => {}
                 SessionLockState::Locked(output_assoc) => {
                     if let Some(lock_surface) = &output_assoc.lock_surface {
+                        let surface = lock_surface.wl_surface();
                         take_presentation_feedback_surface_tree(
-                            lock_surface.wl_surface(),
+                            surface,
                             &mut output_presentation_feedback,
                             surface_primary_scanout_output,
                             |surface, _| {
