@@ -342,8 +342,8 @@ impl SabiniwmState {
         self.inner.space.raise_element(window, true);
 
         // TODO: Check whether this is necessary.
-        for window in self.inner.space.elements() {
-            if let Some(toplevel) = window.toplevel() {
+        for w in self.inner.space.elements() {
+            if let Some(toplevel) = w.toplevel() {
                 toplevel.send_pending_configure();
             }
         }
