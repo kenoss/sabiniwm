@@ -335,11 +335,16 @@ impl SabiniwmState {
     }
 
     pub(crate) fn reflect_focus_from_stackset_aux(&mut self, serial: Serial) {
+        use smithay::desktop::space::SpaceElement;
+
         let Some(window) = self.inner.view.focused_window() else {
             return;
         };
 
-        self.inner.space.raise_element(window, true);
+        for w in self.inner.space.elements() {
+            w.set_activate(false);
+        }
+        window.set_activate(true);
 
         // TODO: Check whether this is necessary.
         for w in self.inner.space.elements() {
