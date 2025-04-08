@@ -132,6 +132,9 @@ impl ConfigDelegateUnstableI for Config {
             kbd("H-b") => action::ActionWorkspaceFocus::Prev.into_action(),
 
             kbd("H-k") => (action::ActionWindowKill {}).into_action(),
+
+            kbd("H-r") => (action::ActionWindowFloat {}).into_action(),
+            kbd("H-l") => (action::ActionWindowSink {}).into_action(),
         };
         keymap.extend(workspace_tags.iter().cloned().enumerate().map(|(i, tag)| {
             (
@@ -170,6 +173,16 @@ impl ConfigDelegateUnstableI for Config {
         }));
 
         Keymap::new(keymap)
+    }
+
+    fn get_border_for_float_window(&self) -> sabiniwm::view::window::Border {
+        use sabiniwm::view::window::{Border, Rgba};
+
+        Border {
+            dim: 2.into(),
+            active_rgba: Rgba::from_rgba(0x556b2fff),
+            inactive_rgba: Rgba::from_rgba(0x202020ff),
+        }
     }
 
     fn on_lid_closed(&self) {

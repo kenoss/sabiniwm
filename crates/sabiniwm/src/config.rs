@@ -51,6 +51,16 @@ pub trait ConfigDelegateUnstableI {
         Keymap::new(keymap)
     }
 
+    fn get_border_for_float_window(&self) -> sabiniwm::view::window::Border {
+        use sabiniwm::view::window::{Border, Rgba};
+
+        Border {
+            dim: 2.into(),
+            active_rgba: Rgba::from_rgba(0x00000000),
+            inactive_rgba: Rgba::from_rgba(0x00000000),
+        }
+    }
+
     fn select_mode_and_scale_on_connecter_added(
         &self,
         connector_info: &drm::control::connector::Info,

@@ -209,3 +209,44 @@ impl ActionFnI for ActionWindowKill {
         };
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct ActionWindowFloat {}
+
+impl ActionFnI for ActionWindowFloat {
+    fn exec(&self, state: &mut SabiniwmState) {
+        let Some(window) = state.inner.view.focused_window() else {
+            return;
+        };
+        state.inner.view.make_window_float(window.id());
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ActionWindowSink {}
+
+impl ActionFnI for ActionWindowSink {
+    fn exec(&self, state: &mut SabiniwmState) {
+        use crate::view::stackset::WindowFocusType;
+
+        let window_id = state.inner.view.update_stackset_with(|stackset| {
+            if stackset.window_focus_type == WindowFocusType::Stack {
+                return None;
+            }
+
+            let fw = stackset.float_windows.pop().unwrap(/* must not be empty as WindowFocusType is Float */);
+            // WindowFocusType will be updated in `set_focus()` if needed.
+
+            let workspaces = stackset.workspaces.as_mut();
+
+            let dst = workspaces.vec[workspaces.focus].stack.as_mut();
+            dst.vec.insert(0, fw.id);
+            dst.commit();
+
+            Some(fw.id)
+        });
+        if let Some(window_id) = window_id {
+            state.inner.view.set_focus(window_id);
+        }
+    }
+}

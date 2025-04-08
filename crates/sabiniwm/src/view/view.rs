@@ -2,8 +2,8 @@ use crate::config::{ConfigDelegate, ConfigDelegateUnstableI};
 use crate::util::{FocusedVec, Id};
 use crate::view::api::{ViewHandleMessageApi, ViewLayoutApi};
 use crate::view::layout_node::LayoutMessage;
-use crate::view::stackset::StackSet;
-use crate::view::window::{Window, WindowProps};
+use crate::view::stackset::{StackSet, WindowFocusType};
+use crate::view::window::{Border, Window, WindowProps};
 use itertools::Itertools;
 use smithay::utils::{Logical, Rectangle, Size};
 use std::collections::{HashMap, HashSet};
@@ -19,6 +19,8 @@ pub(super) struct ViewState {
     pub(super) layout_queue: Vec<(Id<Window>, WindowProps)>,
     pub(super) windows: HashMap<Id<Window>, Window>,
     pub(super) rect: Rectangle<i32, Logical>,
+    // Read only. Cache it as getting it requires `ConfigDelegate`.
+    border_for_float_window: Border,
 }
 
 impl View {
@@ -32,6 +34,7 @@ impl View {
             layout_queue: Vec::new(),
             windows: HashMap::new(),
             rect,
+            border_for_float_window: config_delegate.get_border_for_float_window(),
         };
         Self { state }
     }
@@ -95,6 +98,17 @@ impl View {
                 .unwrap_or(0);
             stack.commit();
         }
+        self.state
+            .stackset
+            .float_windows
+            .retain(|fw| !removed_window_ids.contains(&fw.id));
+
+        if self.state.stackset.window_focus_type == WindowFocusType::Float
+            && self.state.stackset.float_windows.is_empty()
+        {
+            self.state.stackset.window_focus_type = WindowFocusType::Stack;
+        }
+
         for window in removed_windows {
             space.unmap_elem(&window);
         }
@@ -154,6 +168,28 @@ impl View {
         }
 
         assert!(self.state.layout_queue.is_empty());
+
+        for fw in &self.state.stackset.float_windows {
+            let window = self.state.windows.get_mut(&fw.id).unwrap();
+            let props = WindowProps {
+                geometry: fw.geometry,
+                border: self.state.border_for_float_window.clone(),
+            };
+            window.set_props(props);
+            space.map_element(window.clone(), fw.geometry.loc, false);
+            let Some(surface) = window.toplevel() else {
+                continue;
+            };
+            surface.with_pending_state(|state| {
+                state.states.set(xdg_toplevel::State::Fullscreen);
+                state.states.set(xdg_toplevel::State::TiledTop);
+                state.states.set(xdg_toplevel::State::TiledLeft);
+                state.states.set(xdg_toplevel::State::TiledBottom);
+                state.states.set(xdg_toplevel::State::TiledRight);
+                state.size = Some(fw.geometry.size);
+            });
+            surface.send_pending_configure();
+        }
     }
 
     pub fn handle_layout_message(
@@ -194,46 +230,93 @@ impl View {
     }
 
     pub fn set_focus(&mut self, id: Id<Window>) {
-        let workspaces = &mut self.state.stackset.workspaces;
+        let i = self
+            .state
+            .stackset
+            .float_windows
+            .iter()
+            .position(|x| x.id == id);
+        if let Some(i) = i {
+            let fw = self.state.stackset.float_windows.remove(i);
+            self.state.stackset.float_windows.push(fw);
 
-        let mut indice = None;
-        for (i, ws) in workspaces.as_vec().iter().enumerate() {
-            for (j, &window_id) in ws.stack.as_vec().iter().enumerate() {
-                if window_id == id {
-                    indice = Some((i, j));
-                    break;
+            self.state.stackset.window_focus_type = WindowFocusType::Float;
+        } else {
+            let workspaces = &mut self.state.stackset.workspaces;
+
+            let mut indice = None;
+            for (i, ws) in workspaces.as_vec().iter().enumerate() {
+                for (j, &window_id) in ws.stack.as_vec().iter().enumerate() {
+                    if window_id == id {
+                        indice = Some((i, j));
+                        break;
+                    }
                 }
             }
-        }
-        let Some((i, j)) = indice else {
-            return;
-        };
+            let Some((i, j)) = indice else {
+                return;
+            };
 
-        workspaces.set_focused_index(i);
-        workspaces.focus_mut().stack.set_focused_index(j);
+            workspaces.set_focused_index(i);
+            workspaces.focus_mut().stack.set_focused_index(j);
+
+            self.state.stackset.window_focus_type = WindowFocusType::Stack;
+        }
     }
 
     pub fn focused_window(&self) -> Option<&Window> {
-        self.state
-            .stackset
-            .workspaces
-            .focus()
-            .stack
-            .focus()
-            .map(|id| self.state.windows.get(id).unwrap())
+        let id = match self.state.stackset.window_focus_type {
+            WindowFocusType::Stack => self.state.stackset.workspaces.focus().stack.focus(),
+            WindowFocusType::Float => self.state.stackset.float_windows.last().map(|x| &x.id),
+        };
+        id.map(|id| self.state.windows.get(id).unwrap())
     }
 
     pub fn focused_window_mut(&mut self) -> Option<&mut Window> {
-        self.state
-            .stackset
-            .workspaces
-            .focus()
-            .stack
-            .focus()
-            .map(|id| self.state.windows.get_mut(id).unwrap())
+        let id = match self.state.stackset.window_focus_type {
+            WindowFocusType::Stack => self.state.stackset.workspaces.focus().stack.focus(),
+            WindowFocusType::Float => self.state.stackset.float_windows.last().map(|x| &x.id),
+        };
+        id.map(|id| self.state.windows.get_mut(id).unwrap())
     }
 
-    pub fn update_stackset_with(&mut self, f: impl FnOnce(&mut StackSet)) {
-        f(&mut self.state.stackset);
+    pub fn get_window(&self, id: Id<Window>) -> Option<&Window> {
+        self.state.windows.get(&id)
+    }
+
+    pub fn update_stackset_with<T>(&mut self, f: impl FnOnce(&mut StackSet) -> T) -> T {
+        f(&mut self.state.stackset)
+    }
+
+    pub fn make_window_float(&mut self, id: Id<Window>) {
+        use crate::view::stackset::FloatWindow;
+
+        let geometry = self.get_window(id).unwrap().geometry_actual();
+        let stackset = &mut self.state.stackset;
+
+        let fw = (|| {
+            let workspaces = stackset.workspaces.as_mut();
+
+            for workspace in workspaces.vec.iter_mut() {
+                let mut stack = workspace.stack.as_mut();
+                if let Some(i) = stack.vec.iter().position(|&wid| wid == id) {
+                    stack.vec.remove(i);
+                    stack.focus = stack.focus.min(stack.vec.len().saturating_sub(1));
+                    stack.commit();
+
+                    return Some(FloatWindow { id, geometry });
+                }
+            }
+
+            if let Some(i) = stackset.float_windows.iter().position(|fw| fw.id == id) {
+                return Some(stackset.float_windows.remove(i));
+            }
+
+            None
+        })();
+        let fw = fw.unwrap();
+
+        stackset.float_windows.push(fw);
+        self.set_focus(id);
     }
 }

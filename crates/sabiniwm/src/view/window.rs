@@ -228,6 +228,10 @@ mod window {
             self.update_ssd()
         }
 
+        pub fn geometry_actual(&self) -> Rectangle<i32, Logical> {
+            self.inner.lock().unwrap().props.geometry
+        }
+
         fn update_ssd(&mut self) {
             use smithay::reexports::wayland_protocols::xdg::shell::server::xdg_toplevel;
 
@@ -439,5 +443,6 @@ mod window {
 }
 
 pub(crate) use props::*;
+pub use props::{Border, Rgba};
 pub(crate) use window::as_render_elements::*;
 pub(crate) use window::*;

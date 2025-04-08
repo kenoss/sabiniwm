@@ -1,10 +1,14 @@
 use crate::util::{FocusedVec, Id, NonEmptyFocusedVec};
 use crate::view::layout_node::{LayoutTree, LayoutTreeBuilder};
 use crate::view::window::Window;
+use smithay::utils::{Logical, Rectangle};
 use std::cell::UnsafeCell;
 
 pub struct StackSet {
     pub workspaces: NonEmptyFocusedVec<Workspace>,
+    // Bottom to top (because grab removes/inserts the top element and we make it O(1)).
+    pub float_windows: Vec<FloatWindow>,
+    pub window_focus_type: WindowFocusType,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -14,6 +18,19 @@ pub struct Workspace {
     pub tag: WorkspaceTag,
     pub stack: FocusedVec<Id<Window>>,
     layout_tree: UnsafeCell<LayoutTree>,
+}
+
+pub struct FloatWindow {
+    pub id: Id<Window>,
+    pub geometry: Rectangle<i32, Logical>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WindowFocusType {
+    // `StackSet::workspaces.focus().stack.focus()` is focused if `Some`.
+    Stack,
+    // `StackSet::workspaces.float_windows.last().unwrap()` is focused.
+    Float,
 }
 
 impl StackSet {
@@ -27,7 +44,11 @@ impl StackSet {
             })
             .collect();
         let workspaces = NonEmptyFocusedVec::new(workspaces, 0);
-        Self { workspaces }
+        Self {
+            workspaces,
+            float_windows: vec![],
+            window_focus_type: WindowFocusType::Stack,
+        }
     }
 
     pub fn workspaces(&self) -> &NonEmptyFocusedVec<Workspace> {
