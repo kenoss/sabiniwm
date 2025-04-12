@@ -3,7 +3,7 @@ use crate::backend::{Backend, BackendI};
 use crate::config::{ConfigDelegate, ConfigDelegateUnstableI};
 use crate::cursor::Cursor;
 use crate::envvar::EnvVar;
-use crate::input::{KeySeq, Keymap};
+use crate::input::{KeySeq, Keymap, ModMask};
 use crate::input_event::FocusUpdateDecider;
 use crate::util::EventHandler;
 use crate::view::view::View;
@@ -108,6 +108,7 @@ pub(crate) struct InnerState {
 
     pub envvar: EnvVar,
     pub keymap: Keymap<Action>,
+    pub modmask_state: ModMask,
     pub keyseq: KeySeq,
     pub view: View,
     pub focus_update_decider: FocusUpdateDecider,
@@ -342,6 +343,7 @@ impl SabiniwmState {
 
                 envvar,
                 keymap,
+                modmask_state: ModMask::default(),
                 keyseq: KeySeq::new(),
                 view,
                 focus_update_decider: FocusUpdateDecider::new(),

@@ -47,35 +47,42 @@ impl SabiniwmState {
                     // `SabiniwmState::process_action` is OK.
                     serial,
                     time,
-                    |this, _, keysym_handle| match event.state() {
-                        KeyState::Pressed => {
-                            let was_empty = this.inner.keyseq.is_empty();
-                            for key in KeySeq::extract(&keysym_handle).into_vec() {
-                                this.inner.keyseq.push(key);
-                                debug!("{:?}", this.inner.keyseq);
-                                match this.inner.keymap.get(&this.inner.keyseq).clone() {
-                                    KeymapEntry::Complete(action) => {
-                                        this.inner.keyseq.clear();
-                                        return FilterResult::Intercept(Some(action));
-                                    }
-                                    KeymapEntry::Incomplete => {}
-                                    KeymapEntry::None => {
-                                        this.inner.keyseq.clear();
-                                        if was_empty {
-                                            return FilterResult::Forward;
-                                        } else {
-                                            return FilterResult::Intercept(None);
+                    |this, _, keysym_handle| {
+                        let keyseq = KeySeq::extract(&keysym_handle);
+                        if let Some(modmask) = keyseq.as_keys().first().map(|key| key.modmask) {
+                            this.inner.modmask_state = modmask;
+                        }
+
+                        match event.state() {
+                            KeyState::Pressed => {
+                                let was_empty = this.inner.keyseq.is_empty();
+                                for key in KeySeq::extract(&keysym_handle).into_vec() {
+                                    this.inner.keyseq.push(key);
+                                    debug!("{:?}", this.inner.keyseq);
+                                    match this.inner.keymap.get(&this.inner.keyseq).clone() {
+                                        KeymapEntry::Complete(action) => {
+                                            this.inner.keyseq.clear();
+                                            return FilterResult::Intercept(Some(action));
+                                        }
+                                        KeymapEntry::Incomplete => {}
+                                        KeymapEntry::None => {
+                                            this.inner.keyseq.clear();
+                                            if was_empty {
+                                                return FilterResult::Forward;
+                                            } else {
+                                                return FilterResult::Intercept(None);
+                                            }
                                         }
                                     }
                                 }
-                            }
-                            FilterResult::Intercept(None)
-                        }
-                        KeyState::Released => {
-                            if this.inner.keyseq.is_empty() {
-                                FilterResult::Forward
-                            } else {
                                 FilterResult::Intercept(None)
+                            }
+                            KeyState::Released => {
+                                if this.inner.keyseq.is_empty() {
+                                    FilterResult::Forward
+                                } else {
+                                    FilterResult::Intercept(None)
+                                }
                             }
                         }
                     },
