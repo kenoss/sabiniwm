@@ -152,49 +152,112 @@ impl SabiniwmState {
                 pointer.frame(self);
             }
             InputEvent::PointerButton { event } => {
+                use smithay::backend::input::ButtonState;
+
+                enum ButtonAction {
+                    NoOverride,
+                    GrabWindowForMove(
+                        Box<dyn Fn(&smithay::input::pointer::ButtonEvent) -> bool + Send + 'static>,
+                    ),
+                }
+
                 let pointer = self.inner.seat.get_pointer().unwrap();
 
-                // Update pointer focus.
-                //
-                // Consider the case that `PointerButton` event is emitted just after workspace focus is changed and a workspace
-                // is shown.
-                //
-                // - A window A was under the pointer in the previous workspace and a window B is under the pointer in the current.
-                // - A window A was under the pointer in the previous workspace and no window is under the pointer in the current.
-                // - No window was under the pointer in the previous workspace and a window B is under the pointer in the current.
-                // - No window was under the pointer in the previous workspace and no window is under the pointer in the current.
-                //
-                // In each case, the event will be derivered to the A/none instead of B/none if we don't update focus here.
-                //
-                // To prevent this, we call `PointerHandle::motion()` to update focus. In the above case, it changes
-                // `smithay::input::pointer::PointerInnerHandle::focus` and calls `crate::PointerFocusTarget::replace()`.
-                //
-                // It is legitimate to unconditionally calls it (i.e. in the other case): pointer related events should be
-                // derivered to a target that is under the pointer at the event timing.
-                let pos = pointer.current_location();
-                let under = self.surface_under(pos);
-                pointer.motion(
-                    self,
-                    under,
-                    &MotionEvent {
-                        serial,
-                        time: event.time_msec(),
-                        location: pos,
-                    },
-                );
+                'block: {
+                    'override_: {
+                        if pointer.is_grabbed() {
+                            break 'override_;
+                        }
 
-                let button = event.button_code();
-                let button_state = event.state();
-                pointer.button(
-                    self,
-                    &ButtonEvent {
-                        serial,
-                        time: event.time_msec(),
-                        button,
-                        state: button_state,
-                    },
-                );
-                pointer.frame(self);
+                        let action = match (
+                            self.inner.modmask_state == self.inner.modmask,
+                            event.button_code(),
+                            event.state(),
+                        ) {
+                            (
+                                true,
+                                crate::const_::linux::input_event_codes::BTN_LEFT,
+                                ButtonState::Pressed,
+                            ) => {
+                                ButtonAction::GrabWindowForMove(Box::new(|event: &ButtonEvent| {
+                                    matches!(
+                                        (event.button, event.state),
+                                        (
+                                            crate::const_::linux::input_event_codes::BTN_LEFT,
+                                            ButtonState::Released
+                                        )
+                                    )
+                                }))
+                            }
+                            _ => ButtonAction::NoOverride,
+                        };
+                        match action {
+                            ButtonAction::NoOverride => {}
+                            ButtonAction::GrabWindowForMove(release_condition) => {
+                                let pos = pointer.current_location();
+                                let under = self.surface_under(pos);
+
+                                let Some((target, _)) = under else {
+                                    break 'override_;
+                                };
+
+                                self.grab_window_for_move(
+                                    serial,
+                                    target,
+                                    &ButtonEvent {
+                                        serial,
+                                        time: event.time_msec(),
+                                        button: event.button_code(),
+                                        state: event.state(),
+                                    },
+                                    release_condition,
+                                );
+
+                                break 'block;
+                            }
+                        }
+                    }
+
+                    // Update pointer focus.
+                    //
+                    // Consider the case that `PointerButton` event is emitted just after workspace focus is changed and a workspace
+                    // is shown.
+                    //
+                    // - A window A was under the pointer in the previous workspace and a window B is under the pointer in the current.
+                    // - A window A was under the pointer in the previous workspace and no window is under the pointer in the current.
+                    // - No window was under the pointer in the previous workspace and a window B is under the pointer in the current.
+                    // - No window was under the pointer in the previous workspace and no window is under the pointer in the current.
+                    //
+                    // In each case, the event will be derivered to the A/none instead of B/none if we don't update focus here.
+                    //
+                    // To prevent this, we call `PointerHandle::motion()` to update focus. In the above case, it changes
+                    // `smithay::input::pointer::PointerInnerHandle::focus` and calls `crate::PointerFocusTarget::replace()`.
+                    //
+                    // It is legitimate to unconditionally calls it (i.e. in the other case): pointer related events should be
+                    // derivered to a target that is under the pointer at the event timing.
+                    let pos = pointer.current_location();
+                    let under = self.surface_under(pos);
+                    pointer.motion(
+                        self,
+                        under,
+                        &MotionEvent {
+                            serial,
+                            time: event.time_msec(),
+                            location: pos,
+                        },
+                    );
+
+                    pointer.button(
+                        self,
+                        &ButtonEvent {
+                            serial,
+                            time: event.time_msec(),
+                            button: event.button_code(),
+                            state: event.state(),
+                        },
+                    );
+                    pointer.frame(self);
+                }
             }
             InputEvent::PointerAxis { event } => {
                 let source = event.source();

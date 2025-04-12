@@ -2,7 +2,7 @@ use crate::config::{ConfigDelegate, ConfigDelegateUnstableI};
 use crate::util::{FocusedVec, Id};
 use crate::view::api::{ViewHandleMessageApi, ViewLayoutApi};
 use crate::view::layout_node::LayoutMessage;
-use crate::view::stackset::{StackSet, WindowFocusType};
+use crate::view::stackset::{FloatWindow, StackSet, WindowFocusType};
 use crate::view::window::{Border, Window, WindowProps};
 use itertools::Itertools;
 use smithay::utils::{Logical, Rectangle, Size};
@@ -318,5 +318,22 @@ impl View {
 
         stackset.float_windows.push(fw);
         self.set_focus(id);
+    }
+
+    pub fn update_float_window_with(&mut self, id: Id<Window>, f: impl FnOnce(&mut FloatWindow)) {
+        let i = self
+            .state
+            .stackset
+            .float_windows
+            .iter()
+            // Inspect the last first as we rarely update non-top ones.
+            .rev()
+            .position(|x| x.id == id)
+            .map(|j| self.state.stackset.float_windows.len() - 1 - j);
+        let Some(i) = i else {
+            return;
+        };
+        let fw = &mut self.state.stackset.float_windows[i];
+        f(fw);
     }
 }

@@ -107,6 +107,7 @@ pub(crate) struct InnerState {
     pub xwayland_shell_state: smithay::wayland::xwayland_shell::XWaylandShellState,
 
     pub envvar: EnvVar,
+    pub modmask: ModMask,
     pub keymap: Keymap<Action>,
     pub modmask_state: ModMask,
     pub keyseq: KeySeq,
@@ -302,6 +303,7 @@ impl SabiniwmState {
             &display_handle.clone(),
         );
 
+        let modmask = config_delegate.get_modmask(backend.is_udev());
         let keymap = config_delegate.make_keymap(backend.is_udev());
 
         let rect = Rectangle::from_size((1280, 720).into());
@@ -342,6 +344,7 @@ impl SabiniwmState {
                 xwayland_shell_state,
 
                 envvar,
+                modmask,
                 keymap,
                 modmask_state: ModMask::default(),
                 keyseq: KeySeq::new(),

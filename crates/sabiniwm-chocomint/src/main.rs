@@ -77,6 +77,16 @@ impl ConfigDelegateUnstableI for Config {
         (0..=9).map(|i| WorkspaceTag(format!("{}", i))).collect()
     }
 
+    fn get_modmask(&self, is_udev_backend: bool) -> sabiniwm::input::ModMask {
+        use sabiniwm::input::ModMask;
+
+        if is_udev_backend {
+            ModMask::MOD5
+        } else {
+            ModMask::MOD4
+        }
+    }
+
     fn make_keymap(&self, is_udev_backend: bool) -> Keymap<Action> {
         let workspace_tags = self.make_workspace_tags();
 

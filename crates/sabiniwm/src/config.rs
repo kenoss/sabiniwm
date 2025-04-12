@@ -26,6 +26,12 @@ pub trait ConfigDelegateUnstableI {
         (0..=9).map(|i| WorkspaceTag(format!("{}", i))).collect()
     }
 
+    fn get_modmask(&self, _is_udev_backend: bool) -> sabiniwm::input::ModMask {
+        use sabiniwm::input::ModMask;
+
+        ModMask::MOD5
+    }
+
     fn make_keymap(
         &self,
         _is_udev_backend: bool,
