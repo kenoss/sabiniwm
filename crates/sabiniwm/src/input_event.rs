@@ -159,6 +159,9 @@ impl SabiniwmState {
                     GrabWindowForMove(
                         Box<dyn Fn(&smithay::input::pointer::ButtonEvent) -> bool + Send + 'static>,
                     ),
+                    GrabWindowForResize(
+                        Box<dyn Fn(&smithay::input::pointer::ButtonEvent) -> bool + Send + 'static>,
+                    ),
                 }
 
                 let pointer = self.inner.seat.get_pointer().unwrap();
@@ -189,6 +192,21 @@ impl SabiniwmState {
                                     )
                                 }))
                             }
+                            (
+                                true,
+                                crate::const_::linux::input_event_codes::BTN_RIGHT,
+                                ButtonState::Pressed,
+                            ) => ButtonAction::GrabWindowForResize(Box::new(
+                                |event: &ButtonEvent| {
+                                    matches!(
+                                        (event.button, event.state),
+                                        (
+                                            crate::const_::linux::input_event_codes::BTN_RIGHT,
+                                            ButtonState::Released
+                                        )
+                                    )
+                                },
+                            )),
                             _ => ButtonAction::NoOverride,
                         };
                         match action {
@@ -202,6 +220,28 @@ impl SabiniwmState {
                                 };
 
                                 self.grab_window_for_move(
+                                    serial,
+                                    target,
+                                    &ButtonEvent {
+                                        serial,
+                                        time: event.time_msec(),
+                                        button: event.button_code(),
+                                        state: event.state(),
+                                    },
+                                    release_condition,
+                                );
+
+                                break 'block;
+                            }
+                            ButtonAction::GrabWindowForResize(release_condition) => {
+                                let pos = pointer.current_location();
+                                let under = self.surface_under(pos);
+
+                                let Some((target, _)) = under else {
+                                    break 'override_;
+                                };
+
+                                self.grab_window_for_resize(
                                     serial,
                                     target,
                                     &ButtonEvent {
