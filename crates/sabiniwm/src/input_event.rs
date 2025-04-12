@@ -404,12 +404,14 @@ impl FocusUpdateDecider {
             (pos.x.floor() + 0.5, pos.y.floor() + 0.5).into()
         }
 
+        let pointer = seat.get_pointer().unwrap();
+        if pointer.is_grabbed() {
+            return false;
+        }
+
         match (timing, event) {
             (Timing::BeforeProcessEvent, InputEvent::PointerButton { event }) => {
-                let pointer = seat.get_pointer().unwrap();
-                let button_state = event.state();
-
-                !pointer.is_grabbed() && button_state == ButtonState::Pressed
+                event.state() == ButtonState::Pressed
             }
             (
                 Timing::AfterProcessEvent,
