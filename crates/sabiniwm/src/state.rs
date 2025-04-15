@@ -103,7 +103,6 @@ pub(crate) struct InnerState {
 
     pub xwayland_client: wayland_server::Client,
     pub xwm: Option<X11Wm>,
-    pub xdisplay: Option<u32>,
     pub xwayland_shell_state: smithay::wayland::xwayland_shell::XWaylandShellState,
 
     pub envvar: EnvVar,
@@ -340,7 +339,6 @@ impl SabiniwmState {
                 clock: Clock::new(),
                 xwayland_client,
                 xwm: None,
-                xdisplay: None,
                 xwayland_shell_state,
 
                 envvar,
@@ -402,7 +400,7 @@ impl EventHandler<XWaylandEvent> for SabiniwmState {
                 .expect("set xwayland default cursor");
 
                 self.inner.xwm = Some(wm);
-                self.inner.xdisplay = Some(display_number);
+                std::env::set_var("DISPLAY", format!(":{display_number}"));
             }
             XWaylandEvent::Error => {
                 warn!("XWayland crashed on startup");
