@@ -442,7 +442,128 @@ mod window {
     }
 }
 
+mod query {
+    use super::*;
+    use crate::util::Id;
+    use smithay::desktop::WindowSurface;
+    use smithay::utils::{Logical, Rectangle, Size};
+    use smithay::wayland::shell::xdg::{ToplevelSurface, XdgToplevelSurfaceRoleAttributes};
+    use std::sync::MutexGuard;
+
+    fn with_toplevel_surface_data<T>(
+        toplevel: &ToplevelSurface,
+        f: impl Fn(MutexGuard<'_, XdgToplevelSurfaceRoleAttributes>) -> T,
+    ) -> T {
+        smithay::wayland::compositor::with_states(toplevel.wl_surface(), |states| {
+            use smithay::wayland::shell::xdg::XdgToplevelSurfaceData;
+
+            let data = states
+                .data_map
+                .get::<XdgToplevelSurfaceData>()
+                .unwrap()
+                .lock()
+                .unwrap();
+            f(data)
+        })
+    }
+
+    pub struct WindowQuery {
+        window: Window,
+        display_handle: smithay::reexports::wayland_server::DisplayHandle,
+        rect: Rectangle<i32, Logical>,
+    }
+
+    impl WindowQuery {
+        pub fn new(
+            window: Window,
+            display_handle: smithay::reexports::wayland_server::DisplayHandle,
+            rect: Rectangle<i32, Logical>,
+        ) -> Self {
+            Self {
+                window,
+                display_handle,
+                rect,
+            }
+        }
+
+        pub fn window_id(&self) -> Id<Window> {
+            self.window.id()
+        }
+
+        pub fn get_primary_output_rect(&self) -> &Rectangle<i32, Logical> {
+            &self.rect
+        }
+
+        pub fn app_id(&self) -> Option<String> {
+            match self.window.smithay_window().underlying_surface() {
+                WindowSurface::Wayland(s) => with_toplevel_surface_data(s, |x| x.app_id.clone()),
+                WindowSurface::X11(_) => None,
+            }
+        }
+
+        pub fn x_class(&self) -> Option<String> {
+            match self.window.smithay_window().underlying_surface() {
+                WindowSurface::Wayland(_) => None,
+                WindowSurface::X11(s) => Some(s.class()),
+            }
+        }
+
+        pub fn title(&self) -> Option<String> {
+            match self.window.smithay_window().underlying_surface() {
+                WindowSurface::Wayland(s) => with_toplevel_surface_data(s, |x| x.title.clone()),
+                WindowSurface::X11(s) => Some(s.title()),
+            }
+        }
+
+        pub fn is_modal(&self) -> Option<bool> {
+            match self.window.smithay_window().underlying_surface() {
+                WindowSurface::Wayland(s) => Some(with_toplevel_surface_data(s, |x| x.modal)),
+                WindowSurface::X11(_) => None,
+            }
+        }
+
+        pub fn surface_size(&self) -> Option<Size<i32, Logical>> {
+            match self.window.smithay_window().underlying_surface() {
+                WindowSurface::Wayland(s) => {
+                    smithay::backend::renderer::utils::with_renderer_surface_state(
+                        s.wl_surface(),
+                        |state| state.surface_size(),
+                    ).unwrap(/* on_commit_buffer_handler() is called */)
+                }
+                WindowSurface::X11(s) => Some(s.geometry().size),
+            }
+        }
+
+        fn get_procfs_process(&self) -> Result<procfs::process::Process, ()> {
+            use smithay::reexports::wayland_server::Resource;
+
+            let pid = match self.window.smithay_window().underlying_surface() {
+                WindowSurface::Wayland(s) => {
+                    let client = s.xdg_toplevel().client().ok_or(())?;
+                    let cred = client
+                        .get_credentials(&self.display_handle)
+                        .map_err(|_| ())?;
+                    cred.pid
+                }
+                WindowSurface::X11(s) => {
+                    s.pid().ok_or(())?.try_into().unwrap(/* u31 */)
+                }
+            };
+
+            let proc = procfs::process::Process::new(pid).map_err(|_| ())?;
+
+            Ok(proc)
+        }
+
+        #[allow(clippy::result_unit_err)]
+        pub fn get_proc_cmdline(&self) -> Result<Vec<String>, ()> {
+            self.get_procfs_process()?.cmdline().map_err(|_| ())
+        }
+    }
+}
+
 pub(crate) use props::*;
 pub use props::{Border, Rgba};
+pub use query::WindowQuery;
 pub(crate) use window::as_render_elements::*;
 pub(crate) use window::*;

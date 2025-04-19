@@ -22,6 +22,7 @@ envy = "0.4.2"
 eyre = "0.6.12"
 itertools = "0.12.1"
 maplit = "1.0.2"
+procfs = "0.17.0"
 serde = { version = "1.0.213", features = ["derive"] }
 serde_json = "1.0.133"
 smithay-drm-extras = { git = "https://github.com/Smithay/smithay", rev = "c579dd9", optional = true }
