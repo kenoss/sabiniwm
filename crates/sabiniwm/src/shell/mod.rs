@@ -117,6 +117,81 @@ impl CompositorHandler for SabiniwmState {
 
     fn commit(&mut self, surface: &WlSurface) {
         on_commit_buffer_handler::<Self>(surface);
+
+        // Process mapping
+        //
+        // Typical sequence of Wayland/X in sabiniwm is the following:
+        //
+        // - ...
+        // - (client) xdg_surface::get_toplevel
+        // - ...
+        // - (client) wl_surface::commit
+        // - (server) xdg_surface::configure
+        // - ...
+        // - (client) wl_surface::attach
+        // - ...
+        // - (client) wl_surface::commit
+        // - (server) Process mapping
+        //
+        // - ...
+        // - (client) PropertyNotify
+        // - ...
+        // - (client) MapRequest
+        // - (server) Process mapping
+        //
+        // TODO: Run manage hook
+        let mut process_initial_mapping = || {
+            use smithay::reexports::wayland_server::Resource;
+
+            // Do nothing if not in initial mapping.
+            if !self
+                .inner
+                .windows_waiting_mapping
+                .contains_key(&surface.id())
+            {
+                return;
+            }
+
+            let has_buffer = smithay::backend::renderer::utils::with_renderer_surface_state(surface, |state| {
+                    state.buffer().is_some()
+                }).unwrap(/* on_commit_buffer_handler() is called */);
+            if !has_buffer {
+                // If a buffer is not attached yet (e.g. initial `wl_surface::commit`), send
+                // `xdg_surface::configure` to let the client send `wl_surface::attach`.
+
+                let window = self
+                    .inner
+                    .windows_waiting_mapping
+                    .get(&surface.id())
+                    .unwrap();
+                let surface =
+                    window.toplevel().unwrap(/* window is added by xdg_surface::get_toplevel */);
+                surface.with_pending_state(|state| {
+                    use smithay::reexports::wayland_protocols::xdg::shell::server::xdg_toplevel;
+
+                    state.states.set(xdg_toplevel::State::Fullscreen);
+                    state.states.set(xdg_toplevel::State::TiledTop);
+                    state.states.set(xdg_toplevel::State::TiledLeft);
+                    state.states.set(xdg_toplevel::State::TiledBottom);
+                    state.states.set(xdg_toplevel::State::TiledRight);
+                });
+                surface.send_pending_configure();
+            } else {
+                // Otherwise, we process mapping.
+
+                let window = self
+                    .inner
+                    .windows_waiting_mapping
+                    .remove(&surface.id())
+                    .unwrap();
+                let window_id = self.inner.view.register_window(window);
+                self.inner.view.set_focus(window_id);
+                self.inner.view.layout(&mut self.inner.space);
+                self.reflect_focus_from_stackset();
+            }
+        };
+        process_initial_mapping();
+
         self.backend.early_import(surface);
 
         if !is_sync_subsurface(surface) {

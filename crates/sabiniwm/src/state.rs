@@ -42,6 +42,7 @@ use smithay::wayland::xdg_activation::XdgActivationState;
 use smithay::wayland::xdg_foreign::XdgForeignState;
 use smithay::wayland::xwayland_keyboard_grab::XWaylandKeyboardGrabState;
 use smithay::xwayland::{X11Wm, XWayland, XWaylandEvent};
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -71,6 +72,9 @@ pub(crate) struct InnerState {
     // desktop
     pub space: Space<Window>,
     pub popups: PopupManager,
+
+    pub windows_waiting_mapping:
+        HashMap<wayland_server::backend::ObjectId, smithay::desktop::Window>,
 
     // smithay state
     pub compositor_state: CompositorState,
@@ -316,6 +320,7 @@ impl SabiniwmState {
                 loop_signal,
                 space: Space::default(),
                 popups: PopupManager::default(),
+                windows_waiting_mapping: HashMap::new(),
                 compositor_state,
                 data_device_state,
                 layer_shell_state,

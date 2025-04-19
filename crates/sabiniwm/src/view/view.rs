@@ -119,8 +119,6 @@ impl View {
     }
 
     pub fn layout(&mut self, space: &mut smithay::desktop::Space<Window>) {
-        use smithay::reexports::wayland_protocols::xdg::shell::server::xdg_toplevel;
-
         assert!(self.state.layout_queue.is_empty());
 
         // Layout
@@ -157,11 +155,6 @@ impl View {
                 continue;
             };
             surface.with_pending_state(|state| {
-                state.states.set(xdg_toplevel::State::Fullscreen);
-                state.states.set(xdg_toplevel::State::TiledTop);
-                state.states.set(xdg_toplevel::State::TiledLeft);
-                state.states.set(xdg_toplevel::State::TiledBottom);
-                state.states.set(xdg_toplevel::State::TiledRight);
                 state.size = Some(geometry.size);
             });
             surface.send_pending_configure();
@@ -181,11 +174,6 @@ impl View {
                 continue;
             };
             surface.with_pending_state(|state| {
-                state.states.set(xdg_toplevel::State::Fullscreen);
-                state.states.set(xdg_toplevel::State::TiledTop);
-                state.states.set(xdg_toplevel::State::TiledLeft);
-                state.states.set(xdg_toplevel::State::TiledBottom);
-                state.states.set(xdg_toplevel::State::TiledRight);
                 state.size = Some(fw.geometry.size);
             });
             surface.send_pending_configure();

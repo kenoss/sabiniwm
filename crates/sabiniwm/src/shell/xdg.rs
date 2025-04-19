@@ -13,11 +13,14 @@ impl XdgShellHandler for SabiniwmState {
     }
 
     fn new_toplevel(&mut self, surface: ToplevelSurface) {
+        use smithay::reexports::wayland_server::Resource;
+
+        let object_id = surface.wl_surface().id();
         let window = smithay::desktop::Window::new_wayland_window(surface);
-        let window_id = self.inner.view.register_window(window);
-        self.inner.view.set_focus(window_id);
-        self.inner.view.layout(&mut self.inner.space);
-        self.reflect_focus_from_stackset();
+        assert!(!self.inner.windows_waiting_mapping.contains_key(&object_id));
+        self.inner
+            .windows_waiting_mapping
+            .insert(object_id, window.clone());
     }
 
     fn new_popup(&mut self, surface: PopupSurface, _positioner: PositionerState) {
