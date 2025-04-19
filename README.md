@@ -36,17 +36,19 @@ kenoss@ is 80%-ish satisfied daily use of it on private machine, Macbook Air.
 - [x] Fundamental udev support (Touchpad, Scaling for HiDPI display)
 - [x] Fundamental features of tiling
 - [x] Layouts (Tall, Full, Select, Toggle, margin, border)
-- [ ] Floating windows
+- [x] Floating windows
+- [x] Manage hook
 - [x] Session lock (`ext-session-lock-v1`)
 - [ ] Screenshot/screencast
 - [ ] etc.
 
 ### Milestone 2
 
-kenoss@ is 80%-ish satisfied daily use of it on coop machine.
+kenoss@ is 80%-ish satisfied daily use of it on corp machine.
 
-- [ ] External (wireless) mouse (I have to look into [[random disconnection issue](https://www.reddit.com/r/archlinux/comments/apnesg/usb_mouse_randomly_disconnecting/)].)
-- [ ] Authentication dialog with security keys (Floating windows + manage hooks?)
+- [x] External (wireless) mouse
+  - [ ] (I have to look into [[random disconnection issue](https://www.reddit.com/r/archlinux/comments/apnesg/usb_mouse_randomly_disconnecting/)].)
+- [x] Authentication dialog with security keys (Floating windows + manage hooks)
 - [ ] xrandr (Multiple outputs, external displays)
 - [ ] Notification
 - [ ] Screencast with Chrome
