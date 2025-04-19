@@ -10,6 +10,7 @@ color-eyre = "0.6.3"
 eyre = "0.6.12"
 itertools = "0.12.1"
 maplit = "1.0.2"
+regex = "1.11.1"
 sabiniwm = { path = "../sabiniwm" }
 time = { version = "0.3.36", features = ["macros", "local-offset"] }
 tracing = "0.1.40"

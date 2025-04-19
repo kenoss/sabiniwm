@@ -13,7 +13,6 @@ use big_s::S;
 use sabiniwm::action::{self, Action, ActionFnI};
 use sabiniwm::config::{ConfigDelegateUnstableI, XkbConfig};
 use sabiniwm::input::{KeySeqSerde, Keymap, ModMask};
-#[allow(unused)]
 use sabiniwm::reexports::smithay;
 use sabiniwm::view::predefined::{LayoutMessageSelect, LayoutMessageToggle};
 use sabiniwm::view::stackset::WorkspaceTag;
@@ -193,6 +192,103 @@ impl ConfigDelegateUnstableI for Config {
             dim: 2.into(),
             active_rgba: Rgba::from_rgba(0x556b2fff),
             inactive_rgba: Rgba::from_rgba(0x202020ff),
+        }
+    }
+
+    fn run_manage_hook(
+        &self,
+        stackset: &mut sabiniwm::view::stackset::StackSet,
+        wq: &sabiniwm::view::window::WindowQuery,
+    ) {
+        use big_s::S;
+        use sabiniwm::model::grid_geometry::RectangleExt;
+        use sabiniwm::view::stackset::{StackSet, WorkspaceTag};
+        use sabiniwm::view::window::{Thickness, WindowQuery};
+        use smithay::utils::{Logical, Rectangle};
+
+        fn do_shift(stackset: &mut StackSet, wq: &WindowQuery, tag: WorkspaceTag) {
+            stackset.delete_window(wq.window_id());
+            let workspaces = stackset.workspaces.as_mut();
+            let workspace = workspaces.vec.iter_mut().find(|ws| ws.tag == tag).unwrap();
+            workspace.stack.push(wq.window_id());
+        }
+
+        fn shrink_rect_by_ratio(
+            rect: Rectangle<i32, Logical>,
+            (top, right, bottom, left): (f32, f32, f32, f32),
+        ) -> Rectangle<i32, Logical> {
+            fn mul(x: i32, r: f32) -> u32 {
+                ((x as f32 * r).floor() as i32).try_into().unwrap()
+            }
+            let top = mul(rect.size.h, top);
+            let right = mul(rect.size.w, right);
+            let bottom = mul(rect.size.h, bottom);
+            let left = mul(rect.size.w, left);
+            let thickness = Thickness::from((top, right, bottom, left));
+            rect.shrink(thickness)
+        }
+
+        fn do_center_float(stackset: &mut StackSet, wq: &WindowQuery, ratio: (f32, f32, f32, f32)) {
+            // Use size = surface size or shrinked by ratio
+            let mut rect = *wq.get_primary_output_rect();
+            let size = if let Some(size) = wq.surface_size() {
+                size
+            } else {
+                shrink_rect_by_ratio(rect, ratio).size
+            };
+            let center = rect.center();
+            rect.size = size;
+            let rect = rect.with_center(center);
+            stackset.float_window_with_rect(wq.window_id(), rect);
+        }
+
+        let app_id = wq.app_id();
+        let app_id = app_id.as_deref();
+        let title = wq.title();
+        let title = title.as_deref();
+        let cmdline = wq.get_proc_cmdline().ok();
+
+        info!(
+            "run_manage_hook, app_id = {:?}, title = {:?}, cmdline = {:?}, is_modal = {:?}",
+            app_id,
+            title,
+            cmdline,
+            wq.is_modal()
+        );
+
+        if app_id == Some("Alacritty") {
+            fn get_on_workspace(title: Option<&str>) -> Option<WorkspaceTag> {
+                use regex::Regex;
+
+                let title = title?;
+                let re = Regex::new(r"^on_workspace_([0-9]+)$").unwrap();
+                let caps = re.captures(title)?;
+                let mat = caps.get(1)?;
+                let i = mat.as_str().to_string();
+                Some(WorkspaceTag(i))
+            }
+
+            if let Some(tag) = get_on_workspace(title) {
+                do_shift(stackset, wq, tag);
+            }
+        }
+
+        if app_id == Some("emacs") {
+            let tag = WorkspaceTag(S("2"));
+            do_shift(stackset, wq, tag);
+        }
+
+        if app_id == Some("org.mozilla.firefox") {
+            let tag = WorkspaceTag(S("4"));
+            do_shift(stackset, wq, tag);
+        }
+
+        if wq.is_modal() == Some(true) {
+            do_center_float(stackset, wq, (0.2, 0.2, 0.2, 0.2));
+        }
+
+        if (app_id, title) == (Some("org.gnome.Nautilus"), Some("New Folder")) {
+            do_center_float(stackset, wq, (0.2, 0.2, 0.2, 0.2));
         }
     }
 
