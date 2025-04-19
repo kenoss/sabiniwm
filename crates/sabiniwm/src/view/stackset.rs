@@ -84,6 +84,60 @@ impl StackSet {
             self.window_focus_type = WindowFocusType::Stack;
         }
     }
+
+    pub fn delete_window(&mut self, window_id: Id<Window>) {
+        let workspaces = self.workspaces.as_mut();
+
+        for workspace in workspaces.vec.iter_mut() {
+            let mut stack = workspace.stack.as_mut();
+            if let Some(i) = stack.vec.iter().position(|&wid| wid == window_id) {
+                stack.vec.remove(i);
+                stack.focus = stack.focus.min(stack.vec.len().saturating_sub(1));
+                stack.commit();
+
+                return;
+            }
+        }
+
+        if let Some(i) = self.float_windows.iter().position(|fw| fw.id == window_id) {
+            self.float_windows.remove(i);
+        }
+    }
+
+    pub(crate) fn make_window_float(
+        &mut self,
+        window_id: Id<Window>,
+        geometry: Rectangle<i32, Logical>,
+    ) {
+        // `delete_window()` returning `FloatWindow`.
+        let fw = (|| {
+            let workspaces = self.workspaces.as_mut();
+
+            for workspace in workspaces.vec.iter_mut() {
+                let mut stack = workspace.stack.as_mut();
+                if let Some(i) = stack.vec.iter().position(|&wid| wid == window_id) {
+                    stack.vec.remove(i);
+                    stack.focus = stack.focus.min(stack.vec.len().saturating_sub(1));
+                    stack.commit();
+
+                    return Some(FloatWindow {
+                        id: window_id,
+                        geometry,
+                    });
+                }
+            }
+
+            if let Some(i) = self.float_windows.iter().position(|fw| fw.id == window_id) {
+                return Some(self.float_windows.remove(i));
+            }
+
+            None
+        })();
+        let fw = fw.unwrap();
+
+        self.float_windows.push(fw);
+        self.set_focus(window_id);
+    }
 }
 
 impl Workspace {

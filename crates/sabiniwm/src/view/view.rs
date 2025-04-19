@@ -257,36 +257,9 @@ impl View {
         f(&mut self.state.stackset)
     }
 
-    pub fn make_window_float(&mut self, id: Id<Window>) {
-        use crate::view::stackset::FloatWindow;
-
-        let geometry = self.get_window(id).unwrap().geometry_actual();
-        let stackset = &mut self.state.stackset;
-
-        let fw = (|| {
-            let workspaces = stackset.workspaces.as_mut();
-
-            for workspace in workspaces.vec.iter_mut() {
-                let mut stack = workspace.stack.as_mut();
-                if let Some(i) = stack.vec.iter().position(|&wid| wid == id) {
-                    stack.vec.remove(i);
-                    stack.focus = stack.focus.min(stack.vec.len().saturating_sub(1));
-                    stack.commit();
-
-                    return Some(FloatWindow { id, geometry });
-                }
-            }
-
-            if let Some(i) = stackset.float_windows.iter().position(|fw| fw.id == id) {
-                return Some(stackset.float_windows.remove(i));
-            }
-
-            None
-        })();
-        let fw = fw.unwrap();
-
-        stackset.float_windows.push(fw);
-        self.set_focus(id);
+    pub fn make_window_float(&mut self, window_id: Id<Window>) {
+        let geometry = self.get_window(window_id).unwrap().geometry_actual();
+        self.state.stackset.make_window_float(window_id, geometry);
     }
 
     pub fn update_float_window_with(&mut self, id: Id<Window>, f: impl FnOnce(&mut FloatWindow)) {
