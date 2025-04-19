@@ -118,7 +118,7 @@ impl CompositorHandler for SabiniwmState {
     fn commit(&mut self, surface: &WlSurface) {
         on_commit_buffer_handler::<Self>(surface);
 
-        // Process mapping
+        // Process mapping and run manage hook
         //
         // Typical sequence of Wayland/X in sabiniwm is the following:
         //
@@ -131,15 +131,16 @@ impl CompositorHandler for SabiniwmState {
         // - (client) wl_surface::attach
         // - ...
         // - (client) wl_surface::commit
-        // - (server) Process mapping
+        // - (server) Process mapping and run manage hook
         //
         // - ...
         // - (client) PropertyNotify
         // - ...
         // - (client) MapRequest
-        // - (server) Process mapping
+        // - (server) Process mapping and run manage hook
         //
-        // TODO: Run manage hook
+        // We run manage hook at this timing because manage hook needs properties like app id,
+        // title, modal or not, buffer size, etc.
         let mut process_initial_mapping = || {
             use smithay::reexports::wayland_server::Resource;
 
@@ -158,6 +159,8 @@ impl CompositorHandler for SabiniwmState {
             if !has_buffer {
                 // If a buffer is not attached yet (e.g. initial `wl_surface::commit`), send
                 // `xdg_surface::configure` to let the client send `wl_surface::attach`.
+                // It is for getting what buffer size the client wants to show, which is used
+                // appropriate floating in a manage hook.
 
                 let window = self
                     .inner
@@ -177,7 +180,7 @@ impl CompositorHandler for SabiniwmState {
                 });
                 surface.send_pending_configure();
             } else {
-                // Otherwise, we process mapping.
+                // Otherwise, we process mapping and run manage hook.
 
                 let window = self
                     .inner
@@ -185,7 +188,11 @@ impl CompositorHandler for SabiniwmState {
                     .remove(&surface.id())
                     .unwrap();
                 let window_id = self.inner.view.register_window(window);
-                self.inner.view.set_focus(window_id);
+                self.inner.view.run_manage_hook(
+                    &self.inner.config_delegate,
+                    window_id,
+                    self.inner.display_handle.clone(),
+                );
                 self.inner.view.layout(&mut self.inner.space);
                 self.reflect_focus_from_stackset();
             }

@@ -36,7 +36,11 @@ impl XwmHandler for SabiniwmState {
 
         let window = smithay::desktop::Window::new_x11_window(window);
         let window_id = self.inner.view.register_window(window);
-        self.inner.view.set_focus(window_id);
+        self.inner.view.run_manage_hook(
+            &self.inner.config_delegate,
+            window_id,
+            self.inner.display_handle.clone(),
+        );
         self.inner.view.layout(&mut self.inner.space);
         self.reflect_focus_from_stackset();
     }

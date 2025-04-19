@@ -221,6 +221,21 @@ impl View {
         self.state.stackset.set_focus(window_id);
     }
 
+    pub fn run_manage_hook(
+        &mut self,
+        config_delegate: &ConfigDelegate,
+        window_id: Id<Window>,
+        display_handle: smithay::reexports::wayland_server::DisplayHandle,
+    ) {
+        use crate::view::window::WindowQuery;
+
+        self.set_focus(window_id);
+
+        let window = self.state.windows.get(&window_id).unwrap().clone();
+        let wq = WindowQuery::new(window, display_handle, self.state.rect);
+        config_delegate.run_manage_hook(&mut self.state.stackset, &wq);
+    }
+
     pub fn focused_window(&self) -> Option<&Window> {
         let id = match self.state.stackset.window_focus_type {
             WindowFocusType::Stack => self.state.stackset.workspaces.focus().stack.focus(),

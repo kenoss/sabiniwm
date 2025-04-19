@@ -67,6 +67,13 @@ pub trait ConfigDelegateUnstableI {
         }
     }
 
+    fn run_manage_hook(
+        &self,
+        _stackset: &mut sabiniwm::view::stackset::StackSet,
+        _wq: &sabiniwm::view::window::WindowQuery,
+    ) {
+    }
+
     fn select_mode_and_scale_on_connecter_added(
         &self,
         connector_info: &drm::control::connector::Info,
