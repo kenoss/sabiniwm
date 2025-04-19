@@ -1,5 +1,5 @@
 // This is a QWERTY version of sabiniwm-pistachio.
-// This is loosely updated. Last update is 2024-11-29.
+// This is loosely updated. Last update is 2025-04-20.
 
 #[allow(unused_imports)]
 #[macro_use]
@@ -13,6 +13,8 @@ use big_s::S;
 use sabiniwm::action::{self, Action, ActionFnI};
 use sabiniwm::config::{ConfigDelegateUnstableI, XkbConfig};
 use sabiniwm::input::{KeySeqSerde, Keymap, ModMask};
+#[allow(unused)]
+use sabiniwm::reexports::smithay;
 use sabiniwm::view::predefined::{LayoutMessageSelect, LayoutMessageToggle};
 use sabiniwm::view::stackset::WorkspaceTag;
 use sabiniwm::SabiniwmState;
@@ -66,8 +68,9 @@ struct Config;
 
 impl ConfigDelegateUnstableI for Config {
     fn get_xkb_config(&self) -> XkbConfig<'_> {
+        let xkb_config = Default::default();
         XkbConfig {
-            xkb_config: Default::default(),
+            xkb_config,
             repeat_delay: 200,
             repeat_rate: 60,
         }
