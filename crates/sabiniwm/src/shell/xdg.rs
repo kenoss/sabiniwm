@@ -15,8 +15,8 @@ impl XdgShellHandler for SabiniwmState {
     fn new_toplevel(&mut self, surface: ToplevelSurface) {
         let window = smithay::desktop::Window::new_wayland_window(surface);
         let window_id = self.inner.view.register_window(window);
-        self.inner.view.layout(&mut self.inner.space);
         self.inner.view.set_focus(window_id);
+        self.inner.view.layout(&mut self.inner.space);
         self.reflect_focus_from_stackset();
     }
 
