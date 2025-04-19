@@ -54,6 +54,36 @@ impl StackSet {
     pub fn workspaces(&self) -> &NonEmptyFocusedVec<Workspace> {
         &self.workspaces
     }
+
+    pub fn set_focus(&mut self, window_id: Id<Window>) {
+        let i = self.float_windows.iter().position(|x| x.id == window_id);
+        if let Some(i) = i {
+            let fw = self.float_windows.remove(i);
+            self.float_windows.push(fw);
+
+            self.window_focus_type = WindowFocusType::Float;
+        } else {
+            let workspaces = &mut self.workspaces;
+
+            let mut indice = None;
+            for (i, ws) in workspaces.as_vec().iter().enumerate() {
+                for (j, &wid) in ws.stack.as_vec().iter().enumerate() {
+                    if wid == window_id {
+                        indice = Some((i, j));
+                        break;
+                    }
+                }
+            }
+            let Some((i, j)) = indice else {
+                return;
+            };
+
+            workspaces.set_focused_index(i);
+            workspaces.focus_mut().stack.set_focused_index(j);
+
+            self.window_focus_type = WindowFocusType::Stack;
+        }
+    }
 }
 
 impl Workspace {
