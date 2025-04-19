@@ -111,6 +111,13 @@ impl ConfigDelegateUnstableI for Config {
         let kbd = |s| keyseq_serde.kbd(s).unwrap();
         let mut keymap = hashmap! {
             kbd("H-x H-q") => action::ActionQuitSabiniwm.into_action(),
+            // Startup action
+            kbd("H-x H-a") => action::ActionSequential(vec![
+                Action::spawn("alacritty --title on_workspace_0"),
+                Action::spawn("alacritty --title on_workspace_1"),
+                Action::spawn("emacs"),
+                Action::spawn("alacritty --title on_workspace_3"),
+            ]).into_action(),
             kbd("H-x H-2") => action::ActionChangeVt(2).into_action(),
 
             kbd("H-x H-t") => Action::spawn("alacritty"),

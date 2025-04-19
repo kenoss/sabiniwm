@@ -250,3 +250,14 @@ impl ActionFnI for ActionWindowSink {
         }
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct ActionSequential(pub Vec<Action>);
+
+impl ActionFnI for ActionSequential {
+    fn exec(&self, state: &mut SabiniwmState) {
+        for action in &self.0 {
+            state.process_action(action);
+        }
+    }
+}
