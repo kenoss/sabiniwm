@@ -22,7 +22,7 @@ mod grab;
 pub mod input;
 pub(crate) mod input_event;
 pub mod input_handler;
-pub(crate) mod model;
+pub mod model;
 pub mod pointer;
 pub mod render;
 pub(crate) mod render_loop;

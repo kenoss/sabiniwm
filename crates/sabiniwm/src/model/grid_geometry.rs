@@ -12,12 +12,16 @@ pub enum SplitSpec {
 #[allow(dead_code)]
 pub trait RectangleExt: Sized {
     fn from_ranges(xr: Range<i32>, yr: Range<i32>) -> Self;
+    fn left_top(&self) -> Point<i32, Logical>;
+    fn right_bottom(&self) -> Point<i32, Logical>;
+    fn center(&self) -> Point<i32, Logical>;
     fn split_vertically_2(&self, specs: [SplitSpec; 2]) -> [Self; 2];
     fn split_horizontally_2(&self, specs: [SplitSpec; 2]) -> [Self; 2];
     fn split_vertically(&self, specs: &[SplitSpec]) -> Vec<Self>;
     fn split_horizontally(&self, specs: &[SplitSpec]) -> Vec<Self>;
     fn shrink(&self, dim: Thickness) -> Self;
     fn inflate(&self, dim: Thickness) -> Self;
+    fn with_center(&self, center: Point<i32, Logical>) -> Self;
 }
 
 impl RectangleExt for Rectangle<i32, Logical> {
@@ -25,6 +29,19 @@ impl RectangleExt for Rectangle<i32, Logical> {
         let loc = Point::from((xr.start, yr.start));
         let size = Size::from((xr.end - xr.start, yr.end - yr.start));
         Rectangle::new(loc, size)
+    }
+
+    fn left_top(&self) -> Point<i32, Logical> {
+        self.loc
+    }
+
+    fn right_bottom(&self) -> Point<i32, Logical> {
+        self.loc + self.size
+    }
+
+    fn center(&self) -> Point<i32, Logical> {
+        let x = self.left_top() + self.right_bottom();
+        Point::from((x.x / 2, x.y / 2))
     }
 
     fn split_vertically_2(&self, specs: [SplitSpec; 2]) -> [Rectangle<i32, Logical>; 2] {
@@ -93,6 +110,11 @@ impl RectangleExt for Rectangle<i32, Logical> {
         let h = top + bottom;
         let size = Size::from((self.size.w + w, self.size.h + h));
         Rectangle::new(loc, size)
+    }
+
+    fn with_center(&self, center: Point<i32, Logical>) -> Self {
+        let loc = self.loc + (center - self.center());
+        Self::new(loc, self.size)
     }
 }
 
