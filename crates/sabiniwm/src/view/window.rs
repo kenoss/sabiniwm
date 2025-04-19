@@ -563,7 +563,7 @@ mod query {
 }
 
 pub(crate) use props::*;
-pub use props::{Border, Rgba};
+pub use props::{Border, Rgba, Thickness};
 pub use query::WindowQuery;
 pub(crate) use window::as_render_elements::*;
 pub(crate) use window::*;
