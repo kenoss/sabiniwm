@@ -138,6 +138,36 @@ impl StackSet {
         self.float_windows.push(fw);
         self.set_focus(window_id);
     }
+
+    pub fn float_window_with_rect(&mut self, window_id: Id<Window>, rect: Rectangle<i32, Logical>) {
+        let fw = (|| {
+            let workspaces = self.workspaces.as_mut();
+
+            for workspace in workspaces.vec.iter_mut() {
+                let mut stack = workspace.stack.as_mut();
+                if let Some(i) = stack.vec.iter().position(|&wid| wid == window_id) {
+                    stack.vec.remove(i);
+                    stack.focus = stack.focus.min(stack.vec.len().saturating_sub(1));
+                    stack.commit();
+
+                    return Some(FloatWindow {
+                        id: window_id,
+                        geometry: rect,
+                    });
+                }
+            }
+
+            if let Some(i) = self.float_windows.iter().position(|fw| fw.id == window_id) {
+                return Some(self.float_windows.remove(i));
+            }
+
+            None
+        })();
+        let fw = fw.unwrap();
+
+        self.float_windows.push(fw);
+        self.set_focus(window_id);
+    }
 }
 
 impl Workspace {
