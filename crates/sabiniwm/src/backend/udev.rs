@@ -4,6 +4,7 @@ use crate::envvar::EnvVar;
 use crate::pointer::PointerElement;
 use crate::render::{CustomRenderElement, OutputRenderElement, SurfaceDmabufFeedback};
 use crate::render_loop::RenderLoop;
+use crate::smithay_ext::OutputExt;
 use crate::state::{DndIcon, InnerState, SabiniwmState, SabiniwmStateWithConcreteBackend};
 use crate::util::EventHandler;
 use crate::view::window::WindowRenderElement;
@@ -768,26 +769,23 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
                     self.inner.display_handle.clone(),
                 );
 
-                let x = self.inner.space.outputs().fold(0, |acc, o| {
-                    acc + self.inner.space.output_geometry(o).unwrap().size.w
-                });
-                let position = (x, 0).into();
-
+                let loc = Point::from((0, 0));
                 let (mode, scale) = self
                     .inner
                     .config_delegate
                     .select_mode_and_scale_on_connecter_added(&connector);
                 output.set_preferred(mode.into());
-                output.change_current_state(Some(mode.into()), None, Some(scale), Some(position));
+                output.change_current_state(Some(mode.into()), None, Some(scale), Some(loc));
+                self.inner.outputs.push(output.clone());
                 // Temporarily, use only the first output.
                 //
                 // TODO: Support multiple displays.
                 if self.inner.space.outputs().next().is_none() {
-                    self.inner.space.map_output(&output, position);
-                    let size = self.inner.space.output_geometry(&output)
-                        .unwrap(/* Space::map_output() and Output::change_current_state() is called. */)
-                        .size;
-                    self.inner.view.resize_output(size, &mut self.inner.space);
+                    self.inner.space.map_output(&output, loc);
+                    self.inner
+                        .view
+                        .resize_output(output.current_logical_size(), &mut self.inner.space);
+
                     self.inner.on_output_added(&output);
                 }
 
@@ -906,21 +904,27 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
         } else {
             device.surfaces.remove(&crtc);
 
-            let output = self
-                .inner
-                .space
-                .outputs()
-                .find(|o| {
-                    o.user_data()
+            (|| -> Option<()> {
+                let pos = self.inner.outputs.iter().position(|output| {
+                    output
+                        .user_data()
                         .get::<UdevOutputId>()
                         .map(|id| id.primary_node == node && id.crtc == crtc)
                         .unwrap_or(false)
-                })
-                .cloned();
-
-            if let Some(output) = output {
+                })?;
+                let output = self.inner.outputs.remove(pos);
                 self.inner.space.unmap_output(&output);
-            }
+
+                if let Some(output) = self.inner.outputs.last() {
+                    let loc = Point::from((0, 0));
+                    self.inner.space.map_output(output, loc);
+                    self.inner
+                        .view
+                        .resize_output(output.current_logical_size(), &mut self.inner.space);
+                }
+
+                Some(())
+            })();
         }
 
         let mut renderer = self

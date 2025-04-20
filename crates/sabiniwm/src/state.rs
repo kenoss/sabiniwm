@@ -75,6 +75,7 @@ pub(crate) struct InnerState {
 
     pub windows_waiting_mapping:
         HashMap<wayland_server::backend::ObjectId, smithay::desktop::Window>,
+    pub outputs: Vec<smithay::output::Output>,
 
     // smithay state
     pub compositor_state: CompositorState,
@@ -321,6 +322,7 @@ impl SabiniwmState {
                 space: Space::default(),
                 popups: PopupManager::default(),
                 windows_waiting_mapping: HashMap::new(),
+                outputs: vec![],
                 compositor_state,
                 data_device_state,
                 layer_shell_state,
