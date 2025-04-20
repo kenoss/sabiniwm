@@ -779,12 +779,17 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
                     .select_mode_and_scale_on_connecter_added(&connector);
                 output.set_preferred(mode.into());
                 output.change_current_state(Some(mode.into()), None, Some(scale), Some(position));
-                self.inner.space.map_output(&output, position);
-                let size = self.inner.space.output_geometry(&output)
-                    .unwrap(/* Space::map_output() and Output::change_current_state() is called. */)
-                    .size;
-                self.inner.view.resize_output(size, &mut self.inner.space);
-                self.inner.on_output_added(&output);
+                // Temporarily, use only the first output.
+                //
+                // TODO: Support multiple displays.
+                if self.inner.space.outputs().next().is_none() {
+                    self.inner.space.map_output(&output, position);
+                    let size = self.inner.space.output_geometry(&output)
+                        .unwrap(/* Space::map_output() and Output::change_current_state() is called. */)
+                        .size;
+                    self.inner.view.resize_output(size, &mut self.inner.space);
+                    self.inner.on_output_added(&output);
+                }
 
                 output.user_data().insert_if_missing(|| UdevOutputId {
                     primary_node: node,
