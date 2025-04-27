@@ -120,6 +120,8 @@ impl crate::backend::DmabufHandlerDelegate for WinitBackend {
 
 impl BackendI for WinitBackend {
     fn init(&mut self, inner: &mut InnerState) -> eyre::Result<()> {
+        self.output
+            .create_global::<SabiniwmState>(&inner.display_handle);
         inner.on_output_added(&self.output);
 
         #[cfg(feature = "egl")]
