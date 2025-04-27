@@ -23,6 +23,7 @@ use smithay::wayland::compositor::{CompositorClientState, CompositorState};
 use smithay::wayland::fifo::FifoManagerState;
 use smithay::wayland::input_method::InputMethodManagerState;
 use smithay::wayland::keyboard_shortcuts_inhibit::KeyboardShortcutsInhibitState;
+use smithay::wayland::output::OutputManagerState;
 use smithay::wayland::pointer_constraints::PointerConstraintsState;
 use smithay::wayland::pointer_gestures::PointerGesturesState;
 use smithay::wayland::relative_pointer::RelativePointerManagerState;
@@ -95,6 +96,8 @@ pub(crate) struct InnerState {
     pub fifo_manager_state: FifoManagerState,
     #[allow(unused)]
     pub commit_timing_manager_state: CommitTimingManagerState,
+    #[allow(unused)]
+    pub output_manager_state: OutputManagerState,
 
     pub dnd_icon: Option<DndIcon>,
 
@@ -245,6 +248,7 @@ impl SabiniwmState {
         let session_lock_data = crate::session_lock::SessionLockData::new(&display_handle);
         let fifo_manager_state = FifoManagerState::new::<Self>(&display_handle);
         let commit_timing_manager_state = CommitTimingManagerState::new::<Self>(&display_handle);
+        let output_manager_state = OutputManagerState::new_with_xdg_output::<Self>(&display_handle);
         TextInputManagerState::new::<Self>(&display_handle);
         InputMethodManagerState::new::<Self, _>(&display_handle, |_client| true);
         VirtualKeyboardManagerState::new::<Self, _>(&display_handle, |_client| true);
@@ -336,6 +340,7 @@ impl SabiniwmState {
                 session_lock_data,
                 fifo_manager_state,
                 commit_timing_manager_state,
+                output_manager_state,
                 dnd_icon: None,
                 cursor_status,
                 seat_name,
