@@ -27,6 +27,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y \
+            libdisplay-info-dev \
             libdrm-dev \
             libgbm-dev \
             libinput-dev \
@@ -60,6 +61,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y \
+            libdisplay-info-dev \
             libdrm-dev \
             libgbm-dev \
             libinput-dev \
@@ -87,6 +89,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y \
+            libdisplay-info-dev \
             libdrm-dev \
             libgbm-dev \
             libinput-dev \
