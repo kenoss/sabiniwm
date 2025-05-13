@@ -43,12 +43,12 @@ install-session-aux NAME DIR IS_RELEASE:
   mkdir -p '{{DIR}}'
   if [ '{{IS_RELEASE}}' = 'true' ]; then \
       cargo build --release; \
-      cp -a target/release/sabiniwm-pistachio '{{DIR}}/'; \
+      cp -a target/release/sabiniwm_pistachio '{{DIR}}/'; \
   else \
       cargo build; \
-      cp -a target/debug/sabiniwm-pistachio '{{DIR}}/'; \
+      cp -a target/debug/sabiniwm_pistachio '{{DIR}}/'; \
   fi
   echo "$TEMPLATE_SESSION" | sed "s/NAME/{{NAME}}/; s|EXEC|$(pwd)/{{DIR}}/launch|" > '{{DIR}}/{{NAME}}.desktop'
-  echo "$TEMPLATE_LAUNCH" | sed "s|BIN_PATH|$(pwd)/{{DIR}}/sabiniwm-pistachio|" > '{{DIR}}/launch'
+  echo "$TEMPLATE_LAUNCH" | sed "s|BIN_PATH|$(pwd)/{{DIR}}/sabiniwm_pistachio|" > '{{DIR}}/launch'
   chmod +x '{{DIR}}/launch'
   sudo install -m 644 '{{DIR}}/{{NAME}}.desktop' /usr/share/wayland-sessions/

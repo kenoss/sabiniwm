@@ -1844,7 +1844,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sabiniwm-chocomint"
+name = "sabiniwm_chocomint"
 version = "0.0.0"
 dependencies = [
  "anyhow",
@@ -1861,7 +1861,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sabiniwm-pistachio"
+name = "sabiniwm_pistachio"
 version = "0.0.0"
 dependencies = [
  "anyhow",

@@ -1,4 +1,4 @@
-// This is a QWERTY version of sabiniwm-pistachio.
+// This is a QWERTY version of sabiniwm_pistachio.
 // This is loosely updated. Last update is 2025-04-20.
 
 #[allow(unused_imports)]

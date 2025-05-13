@@ -81,11 +81,11 @@ Lots of them are written in C/C++. Not easy to read and write.
 
 No document is available.
 
-You can start with running and modifying `sabiniwm-chocomint`/`sabiniwm-pistachio`.
+You can start with running and modifying `sabiniwm_chocomint`/`sabiniwm_pistachio`.
 
 ```shell
-$ cargo run -- --bin sabiniwm-chocomint
-$ cargo run -- --bin sabiniwm-pistachio # If you are a dvorak user.
+$ cargo run -- --bin sabiniwm_chocomint
+$ cargo run -- --bin sabiniwm_pistachio # If you are a dvorak user.
 ```
 
 ## How to develop
