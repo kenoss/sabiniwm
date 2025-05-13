@@ -177,6 +177,6 @@ impl Workspace {
 
     #[allow(clippy::mut_from_ref)]
     pub(super) unsafe fn borrow_layout_tree(&self) -> &mut LayoutTree {
-        &mut *self.layout_tree.get()
+        unsafe { &mut *self.layout_tree.get() }
     }
 }

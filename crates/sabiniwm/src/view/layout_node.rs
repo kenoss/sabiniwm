@@ -119,10 +119,10 @@ impl LayoutTree {
     }
 
     pub unsafe fn borrow_node<'a>(&self, node_id: Id<LayoutNode>) -> &'a LayoutNode {
-        &*self.nodes.get(&node_id).unwrap().get()
+        unsafe { &*self.nodes.get(&node_id).unwrap().get() }
     }
 
     pub unsafe fn borrow_mut_node<'a>(&self, node_id: Id<LayoutNode>) -> &'a mut LayoutNode {
-        &mut *self.nodes.get(&node_id).unwrap().get()
+        unsafe { &mut *self.nodes.get(&node_id).unwrap().get() }
     }
 }

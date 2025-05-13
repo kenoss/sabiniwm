@@ -316,7 +316,7 @@ mod window {
     impl WindowInner {
         fn update_ssd(&mut self, activated: bool) {
             let border = &self.props.border.clone();
-            if let Some(ref mut ssd) = &mut self.ssd {
+            if let Some(ssd) = &mut self.ssd {
                 let bbox: Size<i32, Logical> = (
                     self.props.geometry.size.w + (border.dim.left + border.dim.right) as i32,
                     self.props.geometry.size.h + (border.dim.top + border.dim.bottom) as i32,
