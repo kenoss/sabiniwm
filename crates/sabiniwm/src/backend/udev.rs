@@ -1252,14 +1252,6 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
                         _ => false,
                     },
                     SwapBuffersError::ContextLost(err) => match err.downcast_ref::<DrmError>() {
-                        // TODO: Remove this arm once we update smithay as it handle ResoruceBusy as TemporaryFailure.
-                        // See https://github.com/Smithay/smithay/pull/1662
-                        Some(DrmError::Access(DrmAccessError { source, .. }))
-                            if source.kind() == std::io::ErrorKind::ResourceBusy =>
-                        {
-                            warn!("ContextLost ResourceBusy");
-                            true
-                        }
                         Some(DrmError::TestFailed(_)) => {
                             // reset the complete state, disabling all connectors and planes in case we hit a test failed
                             // most likely we hit this after a tty switch when a foreign master changed CRTC <-> connector bindings
