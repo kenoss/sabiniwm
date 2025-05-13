@@ -1,5 +1,5 @@
 use crate::state::SabiniwmState;
-use smithay::desktop::{find_popup_root_surface, get_popup_toplevel_coords, PopupKind};
+use smithay::desktop::{PopupKind, find_popup_root_surface, get_popup_toplevel_coords};
 use smithay::reexports::wayland_protocols::xdg::shell::server::xdg_toplevel;
 use smithay::reexports::wayland_server::protocol::wl_seat;
 use smithay::utils::Serial;

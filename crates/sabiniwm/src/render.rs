@@ -1,4 +1,4 @@
-use crate::pointer::{PointerRenderElement, CLEAR_COLOR};
+use crate::pointer::{CLEAR_COLOR, PointerRenderElement};
 use crate::state::{InnerState, SabiniwmState};
 use crate::view::window::WindowRenderElement;
 use smithay::backend::renderer::element::solid::SolidColorRenderElement;
@@ -209,8 +209,8 @@ impl InnerState {
         R: Renderer + ImportAll + ImportMem,
         R::TextureId: Clone + 'static,
     {
-        use smithay::backend::renderer::element::surface::render_elements_from_surface_tree;
         use smithay::backend::renderer::element::Kind;
+        use smithay::backend::renderer::element::surface::render_elements_from_surface_tree;
 
         let mut elements = additional_elements
             .into_iter()
@@ -286,7 +286,7 @@ impl InnerState {
         };
         use smithay::input::pointer::CursorImageStatus;
         use smithay::reexports::wayland_server::Resource;
-        use smithay::wayland::compositor::{with_surface_tree_downward, TraversalAction};
+        use smithay::wayland::compositor::{TraversalAction, with_surface_tree_downward};
         use smithay::wayland::fifo::FifoBarrierCachedState;
         use smithay::wayland::fractional_scale::with_fractional_scale;
         use std::collections::HashMap;
@@ -608,8 +608,8 @@ impl InnerState {
         render_element_states: &RenderElementStates,
     ) -> smithay::desktop::utils::OutputPresentationFeedback {
         use smithay::desktop::utils::{
-            surface_presentation_feedback_flags_from_states, surface_primary_scanout_output,
-            take_presentation_feedback_surface_tree, OutputPresentationFeedback,
+            OutputPresentationFeedback, surface_presentation_feedback_flags_from_states,
+            surface_primary_scanout_output, take_presentation_feedback_surface_tree,
         };
         use smithay::input::pointer::CursorImageStatus;
 

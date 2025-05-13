@@ -1,6 +1,6 @@
 use crate::config::{ConfigDelegate, ConfigDelegateUnstableI};
-use crate::input::keymap::KeymapEntry;
 use crate::input::KeySeq;
+use crate::input::keymap::KeymapEntry;
 use crate::state::SabiniwmState;
 use crate::util::Id;
 use crate::view::window::Window;
@@ -10,7 +10,7 @@ use smithay::backend::input::{
 };
 use smithay::input::keyboard::FilterResult;
 use smithay::input::pointer::{AxisFrame, ButtonEvent, MotionEvent};
-use smithay::utils::{Logical, Point, Serial, SERIAL_COUNTER};
+use smithay::utils::{Logical, Point, SERIAL_COUNTER, Serial};
 use std::ops::ControlFlow;
 
 impl SabiniwmState {

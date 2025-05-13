@@ -1,7 +1,7 @@
 use std::io::Read;
 use std::time::Duration;
-use xcursor::parser::{parse_xcursor, Image};
 use xcursor::CursorTheme;
+use xcursor::parser::{Image, parse_xcursor};
 
 static FALLBACK_CURSOR_DATA: &[u8] = include_bytes!("../resources/cursor.rgba");
 

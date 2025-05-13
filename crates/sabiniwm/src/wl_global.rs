@@ -1,5 +1,5 @@
-use smithay::reexports::wayland_server::backend::GlobalId;
 use smithay::reexports::wayland_server::DisplayHandle;
+use smithay::reexports::wayland_server::backend::GlobalId;
 
 /// Call `DisplayHandle::remove_global::<State>()` on drop.
 pub(crate) struct WlGlobal<State, Resource>

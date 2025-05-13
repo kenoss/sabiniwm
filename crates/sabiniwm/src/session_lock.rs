@@ -1,7 +1,8 @@
 use crate::smithay_ext::{OutputExt, SizeExt};
 use crate::state::SabiniwmState;
 use smithay::backend::renderer::element::solid::SolidColorBuffer;
-use smithay::reexports::wayland_protocols::ext::session_lock::v1::server::ext_session_lock_v1::ExtSessionLockV1;
+use smithay::reexports::wayland_protocols::ext::session_lock::v1::server::ext_session_lock_v1::
+    ExtSessionLockV1;
 use smithay::reexports::wayland_server::protocol::wl_output::WlOutput;
 use smithay::wayland::session_lock::{
     LockSurface, SessionLockHandler, SessionLockManagerState, SessionLocker,

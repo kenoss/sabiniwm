@@ -223,7 +223,9 @@ impl SabiniwmState {
                 };
             })
             .map_err(|e| eyre::eyre!("{}", e))?;
-        unsafe { std::env::set_var("WAYLAND_DISPLAY", &socket_name); }
+        unsafe {
+            std::env::set_var("WAYLAND_DISPLAY", &socket_name);
+        }
         info!(
             "Start listening on Wayland socket: WAYLAND_DISPLAY = {}",
             socket_name
@@ -410,7 +412,9 @@ impl EventHandler<XWaylandEvent> for SabiniwmState {
                 .expect("set xwayland default cursor");
 
                 self.inner.xwm = Some(wm);
-                unsafe { std::env::set_var("DISPLAY", format!(":{display_number}")); }
+                unsafe {
+                    std::env::set_var("DISPLAY", format!(":{display_number}"));
+                }
             }
             XWaylandEvent::Error => {
                 warn!("XWayland crashed on startup");

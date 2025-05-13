@@ -1,6 +1,6 @@
 use crate::focus::PointerFocusTarget;
 use crate::state::SabiniwmState;
-use smithay::desktop::{layer_map_for_output, WindowSurfaceType};
+use smithay::desktop::{WindowSurfaceType, layer_map_for_output};
 use smithay::utils::{Logical, Point};
 use smithay::wayland::shell::wlr_layer::Layer as WlrLayer;
 

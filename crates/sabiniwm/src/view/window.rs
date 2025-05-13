@@ -350,9 +350,9 @@ mod window {
 
     pub(crate) mod as_render_elements {
         use super::*;
+        use smithay::backend::renderer::element::AsRenderElements;
         use smithay::backend::renderer::element::solid::SolidColorRenderElement;
         use smithay::backend::renderer::element::surface::WaylandSurfaceRenderElement;
-        use smithay::backend::renderer::element::AsRenderElements;
         use smithay::backend::renderer::{ImportAll, ImportMem, Renderer, Texture};
 
         #[derive(derive_more::From)]

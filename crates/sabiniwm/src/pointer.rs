@@ -98,19 +98,21 @@ where
             // Always render `Default` for a named shape.
             CursorImageStatus::Named(_) => {
                 if let Some(buffer) = self.buffer.as_ref() {
-                    vec![PointerRenderElement::<R>::from(
-                        MemoryRenderBufferRenderElement::from_buffer(
-                            renderer,
-                            location.to_f64(),
-                            buffer,
-                            None,
-                            None,
-                            None,
-                            Kind::Cursor,
+                    vec![
+                        PointerRenderElement::<R>::from(
+                            MemoryRenderBufferRenderElement::from_buffer(
+                                renderer,
+                                location.to_f64(),
+                                buffer,
+                                None,
+                                None,
+                                None,
+                                Kind::Cursor,
+                            )
+                            .expect("Lost system pointer buffer"),
                         )
-                        .expect("Lost system pointer buffer"),
-                    )
-                    .into()]
+                        .into(),
+                    ]
                 } else {
                     vec![]
                 }

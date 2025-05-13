@@ -9,10 +9,11 @@ use crate::util::EventHandler;
 use crate::view::window::WindowRenderElement;
 use crate::wl_global::WlGlobal;
 use eyre::WrapErr;
+use smithay::backend::SwapBuffersError;
+use smithay::backend::allocator::Fourcc;
 use smithay::backend::allocator::dmabuf::Dmabuf;
 use smithay::backend::allocator::format::FormatSet;
 use smithay::backend::allocator::gbm::{GbmAllocator, GbmBufferFlags, GbmDevice};
-use smithay::backend::allocator::Fourcc;
 use smithay::backend::drm::output::{DrmOutput, DrmOutputManager, DrmOutputRenderElements};
 use smithay::backend::drm::{
     CreateDrmNodeError, DrmAccessError, DrmDevice, DrmDeviceFd, DrmError, DrmEvent,
@@ -22,14 +23,14 @@ use smithay::backend::egl::context::ContextPriority;
 use smithay::backend::egl::{self, EGLDevice, EGLDisplay};
 use smithay::backend::input::InputEvent;
 use smithay::backend::libinput::{LibinputInputBackend, LibinputSessionInterface};
-use smithay::backend::renderer::damage::Error as OutputDamageTrackerError;
-use smithay::backend::renderer::element::memory::MemoryRenderBuffer;
-use smithay::backend::renderer::element::AsRenderElements;
-use smithay::backend::renderer::gles::{GlesRenderer, GlesTexture};
-use smithay::backend::renderer::multigpu::gbm::GbmGlesBackend;
-use smithay::backend::renderer::multigpu::GpuManager;
 #[cfg(feature = "egl")]
 use smithay::backend::renderer::ImportEgl;
+use smithay::backend::renderer::damage::Error as OutputDamageTrackerError;
+use smithay::backend::renderer::element::AsRenderElements;
+use smithay::backend::renderer::element::memory::MemoryRenderBuffer;
+use smithay::backend::renderer::gles::{GlesRenderer, GlesTexture};
+use smithay::backend::renderer::multigpu::GpuManager;
+use smithay::backend::renderer::multigpu::gbm::GbmGlesBackend;
 use smithay::backend::renderer::{
     Color32F, DebugFlags, ExportMem, ImportAll, ImportDma, ImportMem, ImportMemWl, Offscreen,
     Renderer,
@@ -37,16 +38,16 @@ use smithay::backend::renderer::{
 use smithay::backend::session::libseat::{self, LibSeatSession};
 use smithay::backend::session::{Event as SessionEvent, Session};
 use smithay::backend::udev::UdevEvent;
-use smithay::backend::SwapBuffersError;
 use smithay::delegate_drm_lease;
 use smithay::desktop::space::{Space, SurfaceTree};
 use smithay::desktop::utils::OutputPresentationFeedback;
 use smithay::input::pointer::{CursorImageAttributes, CursorImageStatus};
 use smithay::reexports::calloop::{LoopHandle, RegistrationToken};
-use smithay::reexports::drm::control::{connector, crtc, Device};
 use smithay::reexports::drm::Device as _;
+use smithay::reexports::drm::control::{Device, connector, crtc};
 use smithay::reexports::rustix::fs::OFlags;
-use smithay::reexports::wayland_protocols::wp::linux_dmabuf::zv1::server::zwp_linux_dmabuf_feedback_v1;
+use smithay::reexports::wayland_protocols::wp::linux_dmabuf::zv1::server::
+    zwp_linux_dmabuf_feedback_v1;
 use smithay::reexports::wayland_protocols::wp::presentation_time::server::wp_presentation_feedback;
 use smithay::reexports::wayland_server::protocol::wl_output::WlOutput;
 use smithay::reexports::{input as libinput, wayland_server};
@@ -56,10 +57,10 @@ use smithay::wayland::dmabuf::{DmabufFeedbackBuilder, DmabufGlobal, DmabufState}
 use smithay::wayland::drm_lease::{
     DrmLease, DrmLeaseBuilder, DrmLeaseHandler, DrmLeaseRequest, DrmLeaseState, LeaseRejected,
 };
-use smithay::wayland::drm_syncobj::{supports_syncobj_eventfd, DrmSyncobjHandler, DrmSyncobjState};
+use smithay::wayland::drm_syncobj::{DrmSyncobjHandler, DrmSyncobjState, supports_syncobj_eventfd};
 use smithay_drm_extras::drm_scanner::{DrmScanEvent, DrmScanner};
-use std::collections::hash_map::HashMap;
 use std::collections::HashSet;
+use std::collections::hash_map::HashMap;
 use std::path::Path;
 use std::sync::Mutex;
 use std::time::Duration;

@@ -3,9 +3,9 @@ pub(crate) mod smithay {
         pub(crate) mod renderer {
             #[thin_delegate::external_trait_def(with_uses = true)]
             pub(crate) mod element {
+                use smithay::backend::renderer::Renderer;
                 use smithay::backend::renderer::element::{Id, Kind, UnderlyingStorage};
                 use smithay::backend::renderer::utils::{CommitCounter, DamageSet, OpaqueRegions};
-                use smithay::backend::renderer::Renderer;
                 use smithay::utils::{
                     Buffer as BufferCoords, Physical, Point, Rectangle, Scale, Transform,
                 };
@@ -87,8 +87,8 @@ pub(crate) mod smithay {
         #[thin_delegate::external_trait_def(with_uses = true)]
         pub(crate) mod keyboard {
             use ::smithay::backend::input::KeyState;
-            use ::smithay::input::keyboard::{KeysymHandle, ModifiersState};
             use ::smithay::input::SeatHandler;
+            use ::smithay::input::keyboard::{KeysymHandle, ModifiersState};
             use ::smithay::utils::Serial;
 
             #[thin_delegate::register]
@@ -129,13 +129,13 @@ pub(crate) mod smithay {
 
         #[thin_delegate::external_trait_def(with_uses = true)]
         pub(crate) mod pointer {
+            use ::smithay::input::SeatHandler;
             use ::smithay::input::pointer::{
                 AxisFrame, ButtonEvent, GestureHoldBeginEvent, GestureHoldEndEvent,
                 GesturePinchBeginEvent, GesturePinchEndEvent, GesturePinchUpdateEvent,
                 GestureSwipeBeginEvent, GestureSwipeEndEvent, GestureSwipeUpdateEvent, MotionEvent,
                 RelativeMotionEvent,
             };
-            use ::smithay::input::SeatHandler;
             use ::smithay::utils::{IsAlive, Serial};
 
             #[thin_delegate::register]
@@ -234,10 +234,10 @@ pub(crate) mod smithay {
 
         #[thin_delegate::external_trait_def(with_uses = true)]
         pub(crate) mod touch {
+            use ::smithay::input::SeatHandler;
             use ::smithay::input::touch::{
                 DownEvent, MotionEvent, OrientationEvent, ShapeEvent, UpEvent,
             };
-            use ::smithay::input::SeatHandler;
             use ::smithay::utils::Serial;
 
             #[thin_delegate::register]

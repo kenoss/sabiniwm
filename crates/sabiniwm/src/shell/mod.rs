@@ -1,9 +1,9 @@
+use crate::ClientState;
 use crate::backend::BackendI;
 use crate::state::SabiniwmState;
 use crate::view::window::Window;
-use crate::ClientState;
 use smithay::backend::renderer::utils::on_commit_buffer_handler;
-use smithay::desktop::{layer_map_for_output, LayerSurface};
+use smithay::desktop::{LayerSurface, layer_map_for_output};
 use smithay::output::Output;
 use smithay::reexports::calloop::Interest;
 use smithay::reexports::wayland_server::protocol::wl_buffer::WlBuffer;
@@ -13,8 +13,8 @@ use smithay::reexports::wayland_server::{Client, Resource};
 use smithay::utils::{Logical, Rectangle};
 use smithay::wayland::buffer::BufferHandler;
 use smithay::wayland::compositor::{
-    add_blocker, add_pre_commit_hook, get_parent, is_sync_subsurface, with_states,
     BufferAssignment, CompositorClientState, CompositorHandler, CompositorState, SurfaceAttributes,
+    add_blocker, add_pre_commit_hook, get_parent, is_sync_subsurface, with_states,
 };
 use smithay::wayland::dmabuf::get_dmabuf;
 use smithay::wayland::seat::WaylandFocus;
@@ -310,7 +310,7 @@ fn ensure_initial_configure(
     popups: &mut smithay::desktop::PopupManager,
 ) {
     use smithay::desktop::{PopupKind, WindowSurfaceType};
-    use smithay::wayland::compositor::{with_surface_tree_upward, TraversalAction};
+    use smithay::wayland::compositor::{TraversalAction, with_surface_tree_upward};
     use smithay::wayland::shell::wlr_layer::LayerSurfaceData;
     use smithay::wayland::shell::xdg::{XdgPopupSurfaceData, XdgToplevelSurfaceData};
     use std::cell::RefCell;

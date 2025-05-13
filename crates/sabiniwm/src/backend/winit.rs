@@ -5,15 +5,15 @@ use crate::render_loop::RenderLoop;
 use crate::state::{InnerState, SabiniwmState, SabiniwmStateWithConcreteBackend};
 use crate::util::EventHandler;
 use eyre::WrapErr;
+use smithay::backend::SwapBuffersError;
 use smithay::backend::egl::EGLDevice;
+#[cfg(feature = "egl")]
+use smithay::backend::renderer::ImportEgl;
 use smithay::backend::renderer::damage::OutputDamageTracker;
 use smithay::backend::renderer::element::AsRenderElements;
 use smithay::backend::renderer::gles::GlesRenderer;
-#[cfg(feature = "egl")]
-use smithay::backend::renderer::ImportEgl;
 use smithay::backend::renderer::{ImportDma, ImportMemWl};
 use smithay::backend::winit::{self, WinitEvent, WinitGraphicsBackend};
-use smithay::backend::SwapBuffersError;
 use smithay::input::pointer::{CursorImageAttributes, CursorImageStatus};
 use smithay::output::{Mode, PhysicalProperties, Subpixel};
 use smithay::reexports::calloop::LoopHandle;
