@@ -46,6 +46,15 @@ use smithay::reexports::calloop::{LoopHandle, RegistrationToken};
 use smithay::reexports::drm::Device as _;
 use smithay::reexports::drm::control::{Device, connector, crtc};
 use smithay::reexports::rustix::fs::OFlags;
+// Allow the difference of `rustfmt`.
+//
+// Note that the author is using fixed version of `rustfmt` that does format very long line well.
+// See https://github.com/rust-lang/rustfmt/issues/6164 and
+// https://github.com/rust-lang/rustfmt/pull/6165 for more details.
+//
+// In `just check-strict`, not-fixed version of `rustfmt` is used and the result differs. We use
+// `#[rustfmt::skip]` here to allow the difference.
+#[rustfmt::skip]
 use smithay::reexports::wayland_protocols::wp::linux_dmabuf::zv1::server::
     zwp_linux_dmabuf_feedback_v1;
 use smithay::reexports::wayland_protocols::wp::presentation_time::server::wp_presentation_feedback;

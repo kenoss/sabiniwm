@@ -1,6 +1,15 @@
 use crate::smithay_ext::{OutputExt, SizeExt};
 use crate::state::SabiniwmState;
 use smithay::backend::renderer::element::solid::SolidColorBuffer;
+// Allow the difference of `rustfmt`.
+//
+// Note that the author is using fixed version of `rustfmt` that does format very long line well.
+// See https://github.com/rust-lang/rustfmt/issues/6164 and
+// https://github.com/rust-lang/rustfmt/pull/6165 for more details.
+//
+// In `just check-strict`, not-fixed version of `rustfmt` is used and the result differs. We use
+// `#[rustfmt::skip]` here to allow the difference.
+#[rustfmt::skip]
 use smithay::reexports::wayland_protocols::ext::session_lock::v1::server::ext_session_lock_v1::
     ExtSessionLockV1;
 use smithay::reexports::wayland_server::protocol::wl_output::WlOutput;
