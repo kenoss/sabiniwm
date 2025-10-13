@@ -64,7 +64,7 @@ impl Action {
 
 impl SabiniwmState {
     pub(crate) fn process_action(&mut self, action: &Action) {
-        info!("{:?}", action);
+        debug!("{:?}", action);
 
         // Disable to execute actions.
         //
