@@ -66,10 +66,15 @@ impl WinitBackend {
             size: backend.window_size(),
             refresh: 60_000,
         };
+        let scale = smithay::output::Scale::Custom {
+            advertised_integer: 1,
+            fractional: 2.0,
+        };
         output.change_current_state(
             Some(mode),
             Some(Transform::Flipped180),
-            None,
+            // We use scale = 2.0 as it's convernient for debug. Use `None` if you don't need it.
+            Some(scale),
             Some((0, 0).into()),
         );
         output.set_preferred(mode);
