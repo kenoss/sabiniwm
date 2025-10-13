@@ -415,8 +415,8 @@ mod window {
                 if let Some(ssd) = &inner.ssd {
                     let mut left_top = location;
                     let border = &inner.props.border;
-                    left_top.x -= border.dim.left as i32;
-                    left_top.y -= border.dim.top as i32;
+                    left_top.x -= (border.dim.left as f64 * scale.x).round() as i32;
+                    left_top.y -= (border.dim.top as f64 * scale.y).round() as i32;
 
                     for i in 0..4 {
                         let rloc = &ssd.relative_locs[i];
