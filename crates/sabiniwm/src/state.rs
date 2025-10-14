@@ -98,6 +98,9 @@ pub(crate) struct InnerState {
     pub commit_timing_manager_state: CommitTimingManagerState,
     #[allow(unused)]
     pub output_manager_state: OutputManagerState,
+    #[cfg(feature = "zwlr_screencopy_v1")]
+    #[allow(unused)]
+    screencopy_state: sabiniwm_wlr_protocol::zwlr_screencopy_v1::ScreencopyState,
 
     pub dnd_icon: Option<DndIcon>,
 
@@ -225,6 +228,8 @@ impl SabiniwmState {
             .map_err(|e| eyre::eyre!("{}", e))?;
         unsafe {
             std::env::set_var("WAYLAND_DISPLAY", &socket_name);
+            std::env::set_var("XDG_SESSION_TYPE", "wayland");
+            std::env::remove_var("XDG_CURRENT_DESKTOP");
         }
         info!(
             "Start listening on Wayland socket: WAYLAND_DISPLAY = {}",
@@ -251,6 +256,13 @@ impl SabiniwmState {
         let fifo_manager_state = FifoManagerState::new::<Self>(&display_handle);
         let commit_timing_manager_state = CommitTimingManagerState::new::<Self>(&display_handle);
         let output_manager_state = OutputManagerState::new_with_xdg_output::<Self>(&display_handle);
+        #[cfg(feature = "zwlr_screencopy_v1")]
+        let screencopy_state =
+            sabiniwm_wlr_protocol::zwlr_screencopy_v1::ScreencopyState::new::<Self, _>(
+                &display_handle,
+                // TODO: Check whether we need to support privileged protocols.
+                |_client| true,
+            );
         TextInputManagerState::new::<Self>(&display_handle);
         InputMethodManagerState::new::<Self, _>(&display_handle, |_client| true);
         VirtualKeyboardManagerState::new::<Self, _>(&display_handle, |_client| true);
@@ -343,6 +355,8 @@ impl SabiniwmState {
                 fifo_manager_state,
                 commit_timing_manager_state,
                 output_manager_state,
+                #[cfg(feature = "zwlr_screencopy_v1")]
+                screencopy_state,
                 dnd_icon: None,
                 cursor_status,
                 seat_name,

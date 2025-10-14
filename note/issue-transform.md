@@ -59,10 +59,11 @@ corresponding matrix representations can be changed by changing coordinate syste
   Let `\rho: D_4 \curvearrowright X` be the derived action. Then, the matrix representation of
   `\rho` and `\rho` differ.
 
-Example: Let `Y = \R^2` be a math coordinate system. Consider an action `\rho': D_4 \curvearrowright Y` and
-take the generators: `r` is a 90-degree counter-clockwise rotation. `f` is the flip across the
-y-axis. Let `X = \R^2` be a screen coordinate system. Take `X \rightarrow Y`. (`Y` is what humans see, `X`
-is a buffer, `X \rightarrow Y` is scanout.) Then,
+Example: Let `Y = \R^2` be a math coordinate system. Consider the group action
+`\rho': D_4 \curvearrowright Y`, with generators `r` (a 90-degree counter-clockwise rotation) and
+`f` (a flip across the y-axis). Let `X = \R^2` be a screen coordinate system with a mapping
+`X \rightarrow Y`. (Here, `Y` represents what a human sees, `X` is a buffer, and `X \rightarrow Y`
+is the scanout process.) Then,
 
 ```
 \rho'(r) = M_2(0 1; -1 0),
@@ -129,7 +130,7 @@ RectInOutput = {(rect, output) | rect and output are Rect<i32, Physical>. Top-le
 ```
 
 Then, `D_4` acts on `RectInOutput`.
-The action on the output is `D_4 \curvearrowright Display`.
+The action is compatible with `D_4 \curvearrowright Display`.
 
 See `TransformTriple::map_rect_mid_to_physical()`.
 
@@ -140,7 +141,7 @@ Note that the implementation of `Transform::transform_rect_in()` has a bug. See
 
 This section describes bugs in smithay.
 
-### `#Transform-Flipped-doc-wrong`
+### #Transform-Flipped-doc-wrong {#Transform-Flipped-doc-wrong}
 
 The
 [documentation for `Transform::Flipped`](https://smithay.github.io/smithay/smithay/utils/enum.Transform.html#variant.Flipped)
@@ -157,7 +158,9 @@ The spec says "90 degrees counter-clockwise."
 
 Fix the documentation. This change is necessary for compliance with the protocol definition.
 
-### `#Transform-invert-wrong`
+Effect on the downstreams: S.
+
+### #Transform-invert-wrong {#Transform-invert-wrong}
 
 The implementation of `Transform::invert()` is wrong.
 
@@ -168,15 +171,17 @@ See `smithay_bug_invert_is_not_left_right_inverse` in
 
 Fix the implementation. The fix is straightforward.
 
-### `#Transform-transform_rect_in-wrong` {#Transform-transform_rect_in-wrong}
+Effect on the downstreams: S. kenoss believes that `Flipped90` and `Flipped270` are rarely used.
+
+### #Transform-transform_rect_in-wrong {#Transform-transform_rect_in-wrong}
 
 The implementation of `Transform::transform_rect_in()` is wrong.
 
 See `smithay_bug_transform_transform_rect_in` in
 `crates/sabiniwm_base/src/smithay_ext/utils/transform_triple.rs`.
 
-Especially, `Transform::_90` acts on `RectInOutput` as if it were `Transform::_270`. This seems
-to be based on a confusion between coordinate systems and translation. See `\rho(r)` in
+Especially, `Transform::_90` acts on `RectInOutput` as if it were `Transform::_270`. This seems to
+be based on a confusion between coordinate systems and translation. See `\rho(r)` in
 [`D_4 \curvearrowright \R^2`](#d4-acts-on-plane).
 
 #### Proposed fix
@@ -185,14 +190,16 @@ The proposed solution is to introduce
 [`TransformTriple`](../crates/sabiniwm_base/src/smithay_ext/utils/transform_triple.rs)
 or a similar construct. This would represent the context of the transform more accurately.
 
+Effect on the downstreams: L. I recommend to gradually deprecate related methods.
+
 ### #winit-flipped180 {#winit-flipped180}
 
 Note that this is a fact, not a bug. However, it is noted here as there appears to be room for
 improvement. (While I found many issues related to this fact...)
 
 smithay and its derivatives use `Output::current_transform() == Flipped180` (a vertical flip) to
-reconcile the screen coordinate system (Y-down) of placed elements with the math coordinate system
-(Y-up) used by the winit GLES renderer.
+reconcile the screen coordinate system (y-down) of placed elements with the math coordinate system
+(y-up) used by the winit GLES renderer.
 
 A better way would be to split y-invert for GLES from `Output::current_transform()` into
 `Output::is_attached_buffer_is_y_inverted()` or something. This subsection explains the reasoning.

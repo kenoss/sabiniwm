@@ -114,6 +114,8 @@ impl ConfigDelegateUnstableI for Config {
             kbd("H-x H-q") => action::ActionQuitSabiniwm.into_action(),
             // Startup action
             kbd("H-x H-a") => action::ActionSequential(vec![
+                // Update an environment variable for xdg-desktop-portal.
+                Action::spawn(r#"sh -c 'systemctl --user set-environment WAYLAND_DISPLAY="$WAYLAND_DISPLAY"'"#),
                 Action::spawn("alacritty --title on_workspace_0"),
                 Action::spawn("alacritty --title on_workspace_1"),
                 Action::spawn("emacs"),

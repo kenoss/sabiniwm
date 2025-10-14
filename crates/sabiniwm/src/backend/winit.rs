@@ -295,7 +295,62 @@ impl SabiniwmStateWithConcreteBackend<'_, WinitBackend> {
         } else {
             self.backend.backend.buffer_age().unwrap_or(0)
         };
+
         let render_res = self.backend.backend.bind().and_then(|(renderer, mut fb)| {
+            // Handle `ScreencopyFrameRequest`s.
+            #[cfg(feature = "zwlr_screencopy_v1")]
+            {
+                use sabiniwm_wlr_protocol::zwlr_screencopy_v1::OutputExtForScreencopy;
+                for frame_request in self.backend.output.take_screencopy_frame_requests() {
+                    let mut elements = Vec::<CustomRenderElement<GlesRenderer>>::new();
+
+                    if frame_request.should_paint_cursors() {
+                        let cursor_lefttop_pos = (cursor_pos - cursor_hotspot.to_f64())
+                            .to_physical(scale)
+                            .to_i32_round();
+                        elements.extend(self.backend.pointer_element.render_elements(
+                            renderer,
+                            cursor_lefttop_pos,
+                            scale,
+                            1.0,
+                        ));
+                    }
+
+                    // draw the dnd icon if any
+                    if let Some(dnd_icon) = self.inner.dnd_icon.as_ref() {
+                        let dnd_icon_pos = (cursor_pos + dnd_icon.offset.to_f64())
+                            .to_physical(scale)
+                            .to_i32_round();
+                        if dnd_icon.surface.alive() {
+                            elements.extend(
+                                smithay::desktop::space::SurfaceTree::from_surface(
+                                    &dnd_icon.surface,
+                                )
+                                .render_elements(
+                                    renderer,
+                                    dnd_icon_pos,
+                                    scale,
+                                    1.0,
+                                ),
+                            );
+                        }
+                    }
+
+                    let (elements, clear_color) =
+                        self.inner
+                            .make_output_elements(renderer, &self.backend.output, elements);
+
+                    crate::screencopy::render_to_screencopy_frame_request(
+                        renderer,
+                        &self.backend.output,
+                        sabiniwm_base::smithay_ext::utils::CoordSystem::Math,
+                        elements.into_iter(),
+                        frame_request,
+                        clear_color,
+                    );
+                }
+            }
+
             let mut elements = Vec::<CustomRenderElement<GlesRenderer>>::new();
 
             let cursor_lefttop_pos = (cursor_pos - cursor_hotspot.to_f64())

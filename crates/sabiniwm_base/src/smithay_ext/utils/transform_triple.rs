@@ -284,7 +284,7 @@ mod tests {
         let rect_physical: Rectangle<i32, Physical> =
             Rectangle::new(rect_physical.0.into(), rect_physical.1.into());
 
-        let got = tt.map_rect_logical_to_physical(rect_logical);
+        let got = tt.map_rect_logical_to_physical(&rect_logical);
         assert_eq!(got, rect_physical);
 
         // Check the number of shared corners among the corners of output and ones of rect.

@@ -1,0 +1,23 @@
+[package]
+name = "sabiniwm_wlr_protocol"
+description = "Wayland protocol wlroots extensions for sabiniwm using smithay"
+documentation = "https://docs.rs/sabiniwm_wlr_protocol"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+repository = { workspace = true }
+categories = { workspace = true }
+keywords = { workspace = true }
+license = { workspace = true }
+rust-version = { workspace = true }
+
+[dependencies]
+aquamarine = { workspace = true }
+enum-kinds = { workspace = true }
+itertools = { workspace = true }
+sabiniwm_base = { workspace = true }
+smithay = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+rstest = { workspace = true }

@@ -26,6 +26,7 @@ pub mod model;
 pub mod pointer;
 pub mod render;
 pub(crate) mod render_loop;
+pub(crate) mod screencopy;
 pub(crate) mod session_lock;
 pub mod shell;
 pub mod state;

@@ -1157,7 +1157,7 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
             return;
         };
 
-        let Some(output) = self
+        let Some(mut output) = self
             .inner
             .space
             .outputs()
@@ -1215,10 +1215,42 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
                 buffer
             });
 
+        // Handle `ScreencopyFrameRequest`s.
+        #[cfg(feature = "zwlr_screencopy_v1")]
+        {
+            use sabiniwm_wlr_protocol::zwlr_screencopy_v1::OutputExtForScreencopy;
+            for frame_request in output.take_screencopy_frame_requests() {
+                let additional_elements = make_additional_elements(
+                    &mut renderer,
+                    &self.inner.space,
+                    &output,
+                    frame_request.should_paint_cursors(),
+                    self.inner.pointer.current_location(),
+                    &pointer_image,
+                    &mut self.backend.pointer_element,
+                    &self.inner.dnd_icon,
+                    &mut self.inner.cursor_status,
+                );
+                let (elements, clear_color) =
+                    self.inner
+                        .make_output_elements(&mut renderer, &output, additional_elements);
+
+                crate::screencopy::render_to_screencopy_frame_request(
+                    &mut renderer,
+                    &output,
+                    sabiniwm_base::smithay_ext::utils::CoordSystem::Screen,
+                    elements.into_iter(),
+                    frame_request,
+                    clear_color,
+                );
+            }
+        }
+
         let additional_elements = make_additional_elements(
             &mut renderer,
             &self.inner.space,
             &output,
+            true, // should_paint_cursors
             self.inner.pointer.current_location(),
             &pointer_image,
             &mut self.backend.pointer_element,
@@ -1281,6 +1313,7 @@ fn make_additional_elements<R>(
     renderer: &mut R,
     space: &Space<crate::view::window::Window>,
     output: &smithay::output::Output,
+    should_paint_cursors: bool,
     pointer_location: Point<f64, Logical>,
     pointer_image: &MemoryRenderBuffer,
     pointer_element: &mut PointerElement,
@@ -1316,7 +1349,7 @@ where
         pointer_element.set_buffer(pointer_image.clone());
 
         // draw the cursor as relevant
-        {
+        if should_paint_cursors {
             // reset the cursor if the surface is no longer alive
             let should_reset = if let CursorImageStatus::Surface(surface) = cursor_status {
                 !surface.alive()

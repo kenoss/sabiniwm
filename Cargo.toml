@@ -5,6 +5,7 @@ members = [
     "crates/sabiniwm_base",
     "crates/sabiniwm_chocomint",
     "crates/sabiniwm_pistachio",
+    "crates/sabiniwm_wlr_protocol",
 ]
 
 [workspace.package]
@@ -19,6 +20,7 @@ rust-version = "1.86.0"
 
 [workspace.dependencies]
 anyhow = "1.0.81"
+aquamarine = "0.6.0"
 backtrace = "0.3.71"
 big_s = "1.0.2"
 bitflags = "2.6.0"
@@ -26,6 +28,7 @@ color-eyre = "0.6.3"
 derive_more = { version = "1.0.0", features = ["from"] }
 downcast = "0.11.0"
 dyn-clone = "1.0.17"
+enum-kinds = "0.5.1"
 envy = "0.4.2"
 eyre = "0.6.12"
 itertools = "0.12.1"
@@ -35,6 +38,7 @@ regex = "1.11.1"
 rstest = "0.18.2"
 sabiniwm = { path = "crates/sabiniwm" }
 sabiniwm_base = { path = "crates/sabiniwm_base" }
+sabiniwm_wlr_protocol = { path = "crates/sabiniwm_wlr_protocol" }
 serde = { version = "1.0.213", features = ["derive"] }
 serde_json = "1.0.133"
 thin_delegate = "0.2.0"
