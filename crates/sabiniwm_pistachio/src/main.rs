@@ -14,6 +14,7 @@ use sabiniwm::input::{KeySeqSerde, Keymap, ModMask};
 use sabiniwm::reexports::smithay;
 use sabiniwm::view::predefined::{LayoutMessageSelect, LayoutMessageToggle};
 use sabiniwm::view::stackset::WorkspaceTag;
+use sabiniwm_base::smithay_ext::utils::FixedTransform;
 
 fn should_use_udev() -> bool {
     matches!(
@@ -152,6 +153,9 @@ impl ConfigDelegateUnstableI for Config {
 
             kbd("H-r") => (action::ActionWindowFloat {}).into_action(),
             kbd("H-l") => (action::ActionWindowSink {}).into_action(),
+
+            kbd("H-x H-d H-r") => action::debug::ActionOutputApplyTransform(FixedTransform::_90).into_action(),
+            kbd("H-x H-d H-f") => action::debug::ActionOutputApplyTransform(FixedTransform::Flipped).into_action(),
         };
         keymap.extend(workspace_tags.iter().cloned().enumerate().map(|(i, tag)| {
             (

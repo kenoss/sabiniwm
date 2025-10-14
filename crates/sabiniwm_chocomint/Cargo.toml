@@ -19,6 +19,7 @@ itertools = { workspace = true }
 maplit = { workspace = true }
 regex = { workspace = true }
 sabiniwm = { workspace = true }
+sabiniwm_base = { workspace = true }
 time = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
