@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "crates/sabiniwm",
+    "crates/sabiniwm_base",
     "crates/sabiniwm_chocomint",
     "crates/sabiniwm_pistachio",
 ]
@@ -33,6 +34,7 @@ procfs = "0.17.0"
 regex = "1.11.1"
 rstest = "0.18.2"
 sabiniwm = { path = "crates/sabiniwm" }
+sabiniwm_base = { path = "crates/sabiniwm_base" }
 serde = { version = "1.0.213", features = ["derive"] }
 serde_json = "1.0.133"
 thin_delegate = "0.2.0"

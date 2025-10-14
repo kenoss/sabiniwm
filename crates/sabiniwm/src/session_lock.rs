@@ -1,5 +1,5 @@
-use crate::smithay_ext::{OutputExt, SizeExt};
 use crate::state::SabiniwmState;
+use sabiniwm_base::smithay_ext::utils::{OutputExt, SizeExt};
 use smithay::backend::renderer::element::solid::SolidColorBuffer;
 // Allow the difference of `rustfmt`.
 //

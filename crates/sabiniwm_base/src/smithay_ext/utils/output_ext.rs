@@ -1,6 +1,6 @@
 use smithay::utils::{Logical, Size};
 
-pub(crate) trait OutputExt {
+pub trait OutputExt {
     // Panics: Panics if `Output::current_mode()` is `None`.
     fn current_logical_size(&self) -> Size<i32, Logical>;
 }
@@ -19,28 +19,5 @@ impl OutputExt for smithay::output::Output {
             .to_f64()
             .to_logical(scale)
             .to_i32_round()
-    }
-}
-
-pub(crate) trait SizeExt<N, Kind>
-where
-    N: smithay::utils::Coordinate,
-{
-    fn to_u32(&self) -> Result<Size<u32, Kind>, <u32 as TryFrom<N>>::Error>
-    where
-        u32: TryFrom<N>;
-}
-
-impl<N, Kind> SizeExt<N, Kind> for smithay::utils::Size<N, Kind>
-where
-    N: smithay::utils::Coordinate,
-{
-    fn to_u32(&self) -> Result<Size<u32, Kind>, <u32 as TryFrom<N>>::Error>
-    where
-        u32: TryFrom<N>,
-    {
-        let w = self.w.try_into()?;
-        let h = self.h.try_into()?;
-        Ok(Size::from((w, h)))
     }
 }

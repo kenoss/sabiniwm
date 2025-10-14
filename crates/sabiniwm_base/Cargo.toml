@@ -1,0 +1,23 @@
+[package]
+name = "sabiniwm_base"
+description = "Common utilities for the sabiniwm workspace"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+repository = { workspace = true }
+categories = { workspace = true }
+keywords = { workspace = true }
+license = { workspace = true }
+rust-version = { workspace = true }
+
+[dependencies]
+smithay = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+rstest = { workspace = true }
+
+[features]
+default = []
+failing_test_for_bug = []
