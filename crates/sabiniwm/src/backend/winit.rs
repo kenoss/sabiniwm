@@ -72,6 +72,7 @@ impl WinitBackend {
         };
         output.change_current_state(
             Some(mode),
+            // See #winit-flipped180 in note/issue-transform.md.
             Some(Transform::Flipped180),
             // We use scale = 2.0 as it's convernient for debug. Use `None` if you don't need it.
             Some(scale),
