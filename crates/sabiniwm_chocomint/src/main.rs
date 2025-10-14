@@ -10,13 +10,13 @@ extern crate tracing;
 extern crate maplit;
 
 use big_s::S;
+use sabiniwm::SabiniwmState;
 use sabiniwm::action::{self, Action, ActionFnI};
 use sabiniwm::config::{ConfigDelegateUnstableI, XkbConfig};
 use sabiniwm::input::{KeySeqSerde, Keymap, ModMask};
 use sabiniwm::reexports::smithay;
 use sabiniwm::view::predefined::{LayoutMessageSelect, LayoutMessageToggle};
 use sabiniwm::view::stackset::WorkspaceTag;
-use sabiniwm::SabiniwmState;
 
 fn should_use_udev() -> bool {
     matches!(
@@ -29,10 +29,10 @@ fn should_use_udev() -> bool {
 }
 
 fn tracing_init() -> eyre::Result<()> {
-    use time::macros::format_description;
     use time::UtcOffset;
-    use tracing_subscriber::fmt::time::OffsetTime;
+    use time::macros::format_description;
     use tracing_subscriber::EnvFilter;
+    use tracing_subscriber::fmt::time::OffsetTime;
 
     match std::env::var("RUST_LOG") {
         Err(std::env::VarError::NotPresent) => {}

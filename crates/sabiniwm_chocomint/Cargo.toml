@@ -1,17 +1,24 @@
 [package]
 name = "sabiniwm_chocomint"
-version = "0.0.0"
-edition = "2021"
+description = "Example of configuration of sabiniwm, with QWERTY keyboard layout"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+repository = { workspace = true }
+categories = { workspace = true }
+keywords = { workspace = true }
+license = { workspace = true }
+rust-version = { workspace = true }
 
 [dependencies]
-anyhow = "1.0.81"
-big_s = "1.0.2"
-color-eyre = "0.6.3"
-eyre = "0.6.12"
-itertools = "0.12.1"
-maplit = "1.0.2"
-regex = "1.11.1"
-sabiniwm = { path = "../sabiniwm" }
-time = { version = "0.3.36", features = ["macros", "local-offset"] }
-tracing = "0.1.40"
-tracing-subscriber = { version = "0.3.16", features = ["env-filter", "fmt", "std", "time"] }
+anyhow = { workspace = true }
+big_s = { workspace = true }
+color-eyre = { workspace = true }
+eyre = { workspace = true }
+itertools = { workspace = true }
+maplit = { workspace = true }
+regex = { workspace = true }
+sabiniwm = { workspace = true }
+time = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

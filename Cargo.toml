@@ -5,3 +5,55 @@ members = [
     "crates/sabiniwm_chocomint",
     "crates/sabiniwm_pistachio",
 ]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+authors = ["keno (Ken Okada) <keno.ss57@gmail.com>"]
+repository = "https://github.com/kenoss/sabiniwm"
+categories = ["gui", "graphics"]
+keywords = ["wayland", "compositor", "xmonad", "tiling"]
+license = "MIT OR Apache-2.0"
+rust-version = "1.86.0"
+
+[workspace.dependencies]
+anyhow = "1.0.81"
+backtrace = "0.3.71"
+big_s = "1.0.2"
+bitflags = "2.6.0"
+color-eyre = "0.6.3"
+derive_more = { version = "1.0.0", features = ["from"] }
+downcast = "0.11.0"
+dyn-clone = "1.0.17"
+envy = "0.4.2"
+eyre = "0.6.12"
+itertools = "0.12.1"
+maplit = "1.0.2"
+procfs = "0.17.0"
+regex = "1.11.1"
+rstest = "0.18.2"
+sabiniwm = { path = "crates/sabiniwm" }
+serde = { version = "1.0.213", features = ["derive"] }
+serde_json = "1.0.133"
+thin_delegate = "0.2.0"
+thiserror = "1.0.60"
+time = { version = "0.3.36", features = ["macros", "local-offset"] }
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.16", features = ["env-filter", "fmt", "std", "time"] }
+x11rb = { version = "0.12.0", default-features = false, features = ["composite"] }
+xcursor = {version = "0.3.3" }
+xkbcommon = "0.8.0"
+
+[workspace.dependencies.smithay]
+git = "https://github.com/Smithay/smithay"
+rev = "8886e3b"
+default-features = false
+features = [
+    "backend_winit",
+    "wayland_frontend",
+    "desktop",
+]
+
+[workspace.dependencies.smithay-drm-extras]
+git = "https://github.com/Smithay/smithay"
+rev = "c579dd9"
