@@ -16,7 +16,7 @@ repository = "https://github.com/kenoss/sabiniwm"
 categories = ["gui", "graphics"]
 keywords = ["wayland", "compositor", "xmonad", "tiling"]
 license = "MIT OR Apache-2.0"
-rust-version = "1.86.0"
+rust-version = "1.91.0"
 
 [workspace.dependencies]
 anyhow = "1.0.81"
