@@ -451,13 +451,6 @@ impl DrmSyncobjHandler for SabiniwmState {
 
 smithay::delegate_drm_syncobj!(SabiniwmState);
 
-#[derive(Debug, Default, serde::Deserialize)]
-pub(crate) enum SurfaceCompositionPolicy {
-    UseGbmBufferedSurface,
-    #[default]
-    UseDrmCompositor,
-}
-
 struct SurfaceData {
     primary_node: DrmNode,
     render_node: DrmNode,
