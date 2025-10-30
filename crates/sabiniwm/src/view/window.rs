@@ -357,6 +357,7 @@ mod window {
 
         #[derive(derive_more::From)]
         #[thin_delegate::register]
+        #[allow(clippy::large_enum_variant)]
         pub enum WindowRenderElement<R>
         where
             R: Renderer,
