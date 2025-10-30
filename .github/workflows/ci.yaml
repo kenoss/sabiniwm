@@ -51,6 +51,10 @@ jobs:
       with:
         components: rustfmt,clippy
 
+    - name: install dependencies
+      run: |
+        rustup component add clippy rustfmt
+
     - name: cargo install just
       uses: baptiste0928/cargo-install@v3
       with:
