@@ -72,43 +72,40 @@ impl CompositorHandler for SabiniwmState {
                 )
             });
             if let Some(dmabuf) = maybe_dmabuf {
-                if let Some(acquire_point) = acquire_point {
-                    if let Ok((blocker, source)) = acquire_point.generate_blocker() {
-                        let client = surface.client().unwrap();
-                        let res =
+                if let Some(acquire_point) = acquire_point
+                    && let Ok((blocker, source)) = acquire_point.generate_blocker()
+                {
+                    let client = surface.client().unwrap();
+                    let res = state
+                        .inner
+                        .loop_handle
+                        .insert_source(source, move |_, _, state| {
+                            let display_handle = state.inner.display_handle.clone();
                             state
-                                .inner
-                                .loop_handle
-                                .insert_source(source, move |_, _, state| {
-                                    let display_handle = state.inner.display_handle.clone();
-                                    state
-                                        .client_compositor_state(&client)
-                                        .blocker_cleared(state, &display_handle);
-                                    Ok(())
-                                });
-                        if res.is_ok() {
-                            add_blocker(surface, blocker);
-                            return;
-                        }
+                                .client_compositor_state(&client)
+                                .blocker_cleared(state, &display_handle);
+                            Ok(())
+                        });
+                    if res.is_ok() {
+                        add_blocker(surface, blocker);
+                        return;
                     }
                 }
 
-                if let Ok((blocker, source)) = dmabuf.generate_blocker(Interest::READ) {
-                    if let Some(client) = surface.client() {
-                        let res =
+                if let Ok((blocker, source)) = dmabuf.generate_blocker(Interest::READ)
+                    && let Some(client) = surface.client()
+                {
+                    let res = state
+                        .inner
+                        .loop_handle
+                        .insert_source(source, move |_, _, state| {
                             state
-                                .inner
-                                .loop_handle
-                                .insert_source(source, move |_, _, state| {
-                                    state.client_compositor_state(&client).blocker_cleared(
-                                        state,
-                                        &state.inner.display_handle.clone(),
-                                    );
-                                    Ok(())
-                                });
-                        if res.is_ok() {
-                            add_blocker(surface, blocker);
-                        }
+                                .client_compositor_state(&client)
+                                .blocker_cleared(state, &state.inner.display_handle.clone());
+                            Ok(())
+                        });
+                    if res.is_ok() {
+                        add_blocker(surface, blocker);
                     }
                 }
             }

@@ -127,15 +127,13 @@ impl XwmHandler for SabiniwmState {
     }
 
     fn allow_selection_access(&mut self, xwm: XwmId, _selection: SelectionTarget) -> bool {
-        if let Some(keyboard) = self.inner.seat.get_keyboard() {
+        if let Some(keyboard) = self.inner.seat.get_keyboard() &&
             // check that an X11 window is focused
-            if let Some(KeyboardFocusTarget::Window(w)) = keyboard.current_focus() {
-                if let Some(surface) = w.x11_surface() {
-                    if surface.xwm_id().unwrap() == xwm {
-                        return true;
-                    }
-                }
-            }
+            let Some(KeyboardFocusTarget::Window(w)) = keyboard.current_focus() &&
+            let Some(surface) = w.x11_surface() &&
+            surface.xwm_id().unwrap() == xwm
+        {
+            return true;
         }
         false
     }

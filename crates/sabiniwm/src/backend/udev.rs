@@ -304,14 +304,13 @@ impl BackendI for UdevBackend {
             .selected_render_node
             .node_with_type(NodeType::Primary)
             .and_then(|x| x.ok())
+            && let Some(backend) = self.backends.get(&primary_node)
         {
-            if let Some(backend) = self.backends.get(&primary_node) {
-                let import_device = backend.drm_output_manager.device().device_fd().clone();
-                if supports_syncobj_eventfd(&import_device) {
-                    let syncobj_state =
-                        DrmSyncobjState::new::<SabiniwmState>(&inner.display_handle, import_device);
-                    self.syncobj_state = Some(syncobj_state);
-                }
+            let import_device = backend.drm_output_manager.device().device_fd().clone();
+            if supports_syncobj_eventfd(&import_device) {
+                let syncobj_state =
+                    DrmSyncobjState::new::<SabiniwmState>(&inner.display_handle, import_device);
+                self.syncobj_state = Some(syncobj_state);
             }
         }
 
@@ -1502,15 +1501,14 @@ impl EventHandler<InputEvent<LibinputInputBackend>> for SabiniwmState {
                     .input_devices
                     .insert(device.clone());
 
-                if device.has_capability(libinput::DeviceCapability::Keyboard) {
-                    if let Some(led_state) = self
+                if device.has_capability(libinput::DeviceCapability::Keyboard)
+                    && let Some(led_state) = self
                         .inner
                         .seat
                         .get_keyboard()
                         .map(|keyboard| keyboard.led_state())
-                    {
-                        device.led_update(led_state.into());
-                    }
+                {
+                    device.led_update(led_state.into());
                 }
 
                 if device.has_capability(libinput::DeviceCapability::Pointer) {
