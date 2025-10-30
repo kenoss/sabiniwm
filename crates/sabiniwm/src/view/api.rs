@@ -75,6 +75,6 @@ impl ViewHandleMessageApi<'_> {
 
     pub fn handle_message_root(&mut self, message: &LayoutMessage) {
         let root_id = self.layout_tree.root_id();
-        self.handle_message(root_id, message);
+        let _ = self.handle_message(root_id, message);
     }
 }
