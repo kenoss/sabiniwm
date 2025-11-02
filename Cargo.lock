@@ -1940,6 +1940,7 @@ dependencies = [
  "sabiniwm_base",
  "time",
  "tracing",
+ "tracing-core",
  "tracing-subscriber",
 ]
 
