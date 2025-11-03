@@ -51,7 +51,7 @@ fn tracing_init() -> eyre::Result<()> {
     }
 
     match std::env::var("RUST_LOG") {
-        Err(std::env::VarError::NotPresent) => {}
+        Err(std::env::VarError::NotPresent) | Err(std::env::VarError::NotUnicode(_)) => {}
         _ => {
             macro_rules! fmt_layer {
                 () => {{
