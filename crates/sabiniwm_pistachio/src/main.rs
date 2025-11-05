@@ -50,55 +50,58 @@ fn tracing_init() -> eyre::Result<()> {
         }
     }
 
+    // Set up tracing subscriber only if `RUST_LOG` is set.
     match std::env::var("RUST_LOG") {
-        Err(std::env::VarError::NotPresent) | Err(std::env::VarError::NotUnicode(_)) => {}
-        _ => {
-            macro_rules! fmt_layer {
-                () => {{
-                    let offset = UtcOffset::current_local_offset().unwrap();
-                    let timer = OffsetTime::new(
-                        offset,
-                        format_description!("[hour]:[minute]:[second].[subsecond digits:3]"),
-                    );
-
-                    tracing_subscriber::fmt::Layer::default()
-                        .compact()
-                        .with_span_events(tracing_subscriber::fmt::format::FmtSpan::NONE)
-                        .with_ansi(true)
-                        .with_timer(timer)
-                        .with_level(true)
-                        .with_target(true)
-                        .with_file(false)
-                        .with_line_number(true)
-                }};
-            }
-            let (stdout_logging, file_logging) = if should_use_udev() {
-                const LOG_FILE: &str = "/tmp/sabiniwm.log";
-                let log_file = std::io::LineWriter::new(std::fs::File::create(LOG_FILE)?);
-                let writer = std::sync::Mutex::new(log_file);
-                let file_logging = fmt_layer!().with_writer(writer);
-                (None, Some(file_logging))
-            } else {
-                let stdout_logging = fmt_layer!().with_writer(std::io::stdout);
-                (Some(stdout_logging), None)
-            };
-
-            let env_filter = EnvFilter::from_default_env();
-
-            let subscriber = Registry::default()
-                .with(
-                    stdout_logging
-                        .with_filter(env_filter.clone())
-                        .with_filter(WithoutSpanContext),
-                )
-                .with(
-                    file_logging
-                        .with_filter(env_filter)
-                        .with_filter(WithoutSpanContext),
-                );
-            subscriber.init();
+        Err(std::env::VarError::NotPresent) | Err(std::env::VarError::NotUnicode(_)) => {
+            return Ok(());
         }
+        Ok(_) => {}
     }
+
+    macro_rules! fmt_layer {
+        () => {{
+            let offset = UtcOffset::current_local_offset().unwrap();
+            let timer = OffsetTime::new(
+                offset,
+                format_description!("[hour]:[minute]:[second].[subsecond digits:3]"),
+            );
+
+            tracing_subscriber::fmt::Layer::default()
+                .compact()
+                .with_span_events(tracing_subscriber::fmt::format::FmtSpan::NONE)
+                .with_ansi(true)
+                .with_timer(timer)
+                .with_level(true)
+                .with_target(true)
+                .with_file(false)
+                .with_line_number(true)
+        }};
+    }
+    let (stdout_logging, file_logging) = if should_use_udev() {
+        const LOG_FILE: &str = "/tmp/sabiniwm.log";
+        let log_file = std::io::LineWriter::new(std::fs::File::create(LOG_FILE)?);
+        let writer = std::sync::Mutex::new(log_file);
+        let file_logging = fmt_layer!().with_writer(writer);
+        (None, Some(file_logging))
+    } else {
+        let stdout_logging = fmt_layer!().with_writer(std::io::stdout);
+        (Some(stdout_logging), None)
+    };
+
+    let env_filter = EnvFilter::from_default_env();
+
+    let subscriber = Registry::default()
+        .with(
+            stdout_logging
+                .with_filter(env_filter.clone())
+                .with_filter(WithoutSpanContext),
+        )
+        .with(
+            file_logging
+                .with_filter(env_filter)
+                .with_filter(WithoutSpanContext),
+        );
+    subscriber.init();
 
     Ok(())
 }
