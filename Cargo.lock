@@ -1945,8 +1945,11 @@ dependencies = [
  "regex",
  "sabiniwm",
  "sabiniwm_base",
+ "sabiniwm_tracing_helper",
  "time",
  "tracing",
+ "tracing-core",
+ "tracing-perfetto",
  "tracing-subscriber",
 ]
 

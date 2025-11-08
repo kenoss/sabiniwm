@@ -1,5 +1,5 @@
 // This is a QWERTY version of sabiniwm_pistachio.
-// This is loosely updated. Last update is 2025-04-20.
+// This is loosely updated. Last update is 2025-11-08.
 
 #[allow(unused_imports)]
 #[macro_use]
@@ -18,6 +18,9 @@ use sabiniwm::reexports::smithay;
 use sabiniwm::view::predefined::{LayoutMessageSelect, LayoutMessageToggle};
 use sabiniwm::view::stackset::WorkspaceTag;
 use sabiniwm_base::smithay_ext::utils::FixedTransform;
+use sabiniwm_tracing_helper::debug::ToggleFilterHandle;
+use std::sync::{Arc, Mutex};
+use tracing_subscriber::Registry;
 
 fn should_use_udev() -> bool {
     matches!(
@@ -29,46 +32,101 @@ fn should_use_udev() -> bool {
     )
 }
 
-fn tracing_init() -> eyre::Result<()> {
+fn tracing_init() -> eyre::Result<Option<ToggleFilterHandle<Registry>>> {
+    use sabiniwm_tracing_helper::NoSpanContextFilter;
+    use sabiniwm_tracing_helper::debug::ToggleFilter;
     use time::UtcOffset;
     use time::macros::format_description;
-    use tracing_subscriber::EnvFilter;
+    use tracing_perfetto::PerfettoLayer;
     use tracing_subscriber::fmt::time::OffsetTime;
+    use tracing_subscriber::layer::SubscriberExt;
+    use tracing_subscriber::util::SubscriberInitExt;
+    use tracing_subscriber::{EnvFilter, Layer, Registry};
 
+    // Set up tracing subscriber only if `RUST_LOG` is set.
     match std::env::var("RUST_LOG") {
-        Err(std::env::VarError::NotPresent) => {}
-        _ => {
+        Err(std::env::VarError::NotPresent) | Err(std::env::VarError::NotUnicode(_)) => {
+            return Ok(None);
+        }
+        Ok(_) => {}
+    }
+
+    let perfetto_tracing = match std::env::var("SABINIWM_PFTRACE_PATH") {
+        Err(std::env::VarError::NotPresent) | Err(std::env::VarError::NotUnicode(_)) => None,
+        Ok(path) => {
+            let file = std::fs::File::create(path)?;
+            Some(PerfettoLayer::new(std::sync::Mutex::new(file)))
+        }
+    };
+    let (perfetto_toggle_filter, perfetto_toggle_handle) = ToggleFilter::new(false);
+
+    macro_rules! fmt_layer {
+        () => {{
             let offset = UtcOffset::current_local_offset().unwrap();
             let timer = OffsetTime::new(
                 offset,
                 format_description!("[hour]:[minute]:[second].[subsecond digits:3]"),
             );
 
-            let fmt = tracing_subscriber::fmt()
-                .with_env_filter(EnvFilter::from_default_env())
+            tracing_subscriber::fmt::Layer::default()
+                .compact()
+                .with_span_events(tracing_subscriber::fmt::format::FmtSpan::NONE)
+                .with_ansi(true)
                 .with_timer(timer)
+                .with_level(true)
+                .with_target(true)
+                .with_file(false)
                 .with_line_number(true)
-                .with_ansi(true);
-
-            if should_use_udev() {
-                let log_file =
-                    std::io::LineWriter::new(std::fs::File::create("/tmp/sabiniwm.log")?);
-
-                fmt.with_writer(std::sync::Mutex::new(log_file)).init();
-            } else {
-                fmt.init();
-            }
-        }
+        }};
     }
+    let (stdout_logging, file_logging) = if should_use_udev() {
+        const LOG_FILE: &str = "/tmp/sabiniwm.log";
+        let log_file = std::io::LineWriter::new(std::fs::File::create(LOG_FILE)?);
+        let writer = std::sync::Mutex::new(log_file);
+        let file_logging = fmt_layer!().with_writer(writer);
+        (None, Some(file_logging))
+    } else {
+        let stdout_logging = fmt_layer!().with_writer(std::io::stdout);
+        (Some(stdout_logging), None)
+    };
+    let env_filter = EnvFilter::from_default_env();
 
-    Ok(())
+    let subscriber = Registry::default()
+        .with(perfetto_tracing.with_filter(perfetto_toggle_filter))
+        .with(
+            stdout_logging
+                .with_filter(env_filter.clone())
+                .with_filter(NoSpanContextFilter),
+        )
+        .with(
+            file_logging
+                .with_filter(env_filter)
+                .with_filter(NoSpanContextFilter),
+        );
+    subscriber.init();
+
+    Ok(Some(perfetto_toggle_handle))
 }
 
-struct Config;
+struct Config {
+    perfetto_toggle_handle: Option<Arc<Mutex<ToggleFilterHandle<Registry>>>>,
+}
+
+impl Config {
+    pub fn new(perfetto_toggle_handle: Option<ToggleFilterHandle<Registry>>) -> Self {
+        let perfetto_toggle_handle = perfetto_toggle_handle.map(|x| Arc::new(Mutex::new(x)));
+        Self {
+            perfetto_toggle_handle,
+        }
+    }
+}
 
 impl ConfigDelegateUnstableI for Config {
     fn get_xkb_config(&self) -> XkbConfig<'_> {
-        let xkb_config = Default::default();
+        let xkb_config = smithay::input::keyboard::XkbConfig {
+            layout: "custom",
+            ..Default::default()
+        };
         XkbConfig {
             xkb_config,
             repeat_delay: 200,
@@ -116,6 +174,7 @@ impl ConfigDelegateUnstableI for Config {
             kbd("H-x H-a") => action::ActionSequential(vec![
                 // Update an environment variable for xdg-desktop-portal.
                 Action::spawn(r#"sh -c 'systemctl --user set-environment WAYLAND_DISPLAY="$WAYLAND_DISPLAY"'"#),
+                // Launch initial apps.
                 Action::spawn("alacritty --title on_workspace_0"),
                 Action::spawn("alacritty --title on_workspace_1"),
                 Action::spawn("emacs"),
@@ -194,6 +253,13 @@ impl ConfigDelegateUnstableI for Config {
                 .into_action(),
             )
         }));
+        if let Some(perfetto_toggle_handle) = self.perfetto_toggle_handle.clone() {
+            use sabiniwm_tracing_helper::debug::{ActionTraceToggle, ActionTraceToggleType};
+            keymap.extend(hashmap! {
+                kbd("H-x H-d H-t") => ActionTraceToggle::new(perfetto_toggle_handle.clone(), ActionTraceToggleType::Enable).into_action(),
+                kbd("H-x H-d H-u") => ActionTraceToggle::new(perfetto_toggle_handle.clone(), ActionTraceToggleType::Disable).into_action(),
+            });
+        }
 
         Keymap::new(keymap)
     }
@@ -242,7 +308,7 @@ impl ConfigDelegateUnstableI for Config {
         }
 
         fn do_center_float(stackset: &mut StackSet, wq: &WindowQuery, ratio: (f32, f32, f32, f32)) {
-            // Use size = surface size or shrinked by ratio
+            // Use size = surface size or shrinked by ratio.
             let mut rect = *wq.get_primary_output_rect();
             let size = if let Some(size) = wq.surface_size() {
                 size
@@ -336,8 +402,7 @@ impl ConfigDelegateUnstableI for Config {
 
         match spawn_script() {
             Some(_) => {}
-            // For example, script was not found or not executable.
-            // Execute swaylock by default.
+            // If an executable script was not found, execute swaylock by default.
             None => {
                 info!("Config::on_lid_closed(): exec default hook");
                 let _ = std::process::Command::new("swaylock")
@@ -357,10 +422,10 @@ impl ConfigDelegateUnstableI for Config {
 }
 
 fn main() -> eyre::Result<()> {
-    tracing_init()?;
+    let perfetto_toggle_handle = tracing_init()?;
     color_eyre::install()?;
 
-    let config_delegate = Box::new(Config);
+    let config_delegate = Box::new(Config::new(perfetto_toggle_handle));
     SabiniwmState::run(config_delegate)?;
 
     Ok(())
