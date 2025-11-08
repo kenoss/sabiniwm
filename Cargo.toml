@@ -38,6 +38,7 @@ regex = "1.11.1"
 rstest = "0.18.2"
 sabiniwm = { path = "crates/sabiniwm" }
 sabiniwm_base = { path = "crates/sabiniwm_base" }
+sabiniwm_tracing_helper = { path = "crates/sabiniwm_tracing_helper" }
 sabiniwm_wlr_protocol = { path = "crates/sabiniwm_wlr_protocol" }
 serde = { version = "1.0.213", features = ["derive"] }
 serde_json = "1.0.133"

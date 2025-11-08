@@ -1938,7 +1938,17 @@ dependencies = [
  "regex",
  "sabiniwm",
  "sabiniwm_base",
+ "sabiniwm_tracing_helper",
  "time",
+ "tracing",
+ "tracing-core",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "sabiniwm_tracing_helper"
+version = "0.0.0"
+dependencies = [
  "tracing",
  "tracing-core",
  "tracing-subscriber",

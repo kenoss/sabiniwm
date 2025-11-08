@@ -27,28 +27,13 @@ fn should_use_udev() -> bool {
 }
 
 fn tracing_init() -> eyre::Result<()> {
+    use sabiniwm_tracing_helper::NoSpanContextFilter;
     use time::UtcOffset;
     use time::macros::format_description;
     use tracing_subscriber::fmt::time::OffsetTime;
     use tracing_subscriber::layer::SubscriberExt;
     use tracing_subscriber::util::SubscriberInitExt;
     use tracing_subscriber::{EnvFilter, Layer, Registry};
-
-    /// Filters out span context for event logging
-    struct WithoutSpanContext;
-
-    impl<S> tracing_subscriber::layer::Filter<S> for WithoutSpanContext
-    where
-        S: tracing::Subscriber + for<'a> tracing_subscriber::registry::LookupSpan<'a>,
-    {
-        fn enabled(
-            &self,
-            metadata: &tracing_core::Metadata<'_>,
-            _cx: &tracing_subscriber::layer::Context<'_, S>,
-        ) -> bool {
-            !metadata.is_span()
-        }
-    }
 
     // Set up tracing subscriber only if `RUST_LOG` is set.
     match std::env::var("RUST_LOG") {
@@ -94,12 +79,12 @@ fn tracing_init() -> eyre::Result<()> {
         .with(
             stdout_logging
                 .with_filter(env_filter.clone())
-                .with_filter(WithoutSpanContext),
+                .with_filter(NoSpanContextFilter),
         )
         .with(
             file_logging
                 .with_filter(env_filter)
-                .with_filter(WithoutSpanContext),
+                .with_filter(NoSpanContextFilter),
         );
     subscriber.init();
 

@@ -1,0 +1,16 @@
+[package]
+name = "sabiniwm_tracing_helper"
+description = "Tracing helper for sabiniwm"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+repository = { workspace = true }
+categories = { workspace = true }
+keywords = { workspace = true }
+license = { workspace = true }
+rust-version = { workspace = true }
+
+[dependencies]
+tracing = { workspace = true }
+tracing-core = { workspace = true }
+tracing-subscriber = { workspace = true }

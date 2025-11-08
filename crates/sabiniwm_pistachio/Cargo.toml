@@ -20,6 +20,7 @@ maplit = { workspace = true }
 regex = { workspace = true }
 sabiniwm = { workspace = true }
 sabiniwm_base = { workspace = true }
+sabiniwm_tracing_helper = { workspace = true }
 time = { workspace = true }
 tracing = { workspace = true }
 tracing-core = { workspace = true }
