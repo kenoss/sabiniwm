@@ -40,7 +40,6 @@ kenoss@ is 80%-ish satisfied daily use of it on private machine, Macbook Air.
 - [x] Manage hook
 - [x] Session lock (`ext-session-lock-v1`)
 - [x] Screenshot/screencast
-- [ ] etc.
 
 ### Milestone 2
 
@@ -53,7 +52,6 @@ kenoss@ is 80%-ish satisfied daily use of it on corp machine.
 - [ ] Notification
 - [x] Screencast with Chrome
 - [ ] IME
-- [ ] etc.
 
 ## Comparison
 
