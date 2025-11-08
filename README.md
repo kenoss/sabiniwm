@@ -15,7 +15,8 @@ A tiling Wayland compositor, influenced by xmonad
 - Excessive use of animation
   - Not a priority. Small use of animation might be supported in the future.
 - Configuration with file
-  - A user can implement it if they need it. Please publish a crate if you implemented it.
+  - A user can implement it if they need it (like [spacemacs](https://github.com/syl20bnr/spacemacs)
+    for emacs). Please publish a crate if you implemented it.
 - Battery included (default configuration)
   - The author believes that there is no good default values for configuration. Users must configure by theirselves.
 
