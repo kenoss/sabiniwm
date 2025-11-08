@@ -174,6 +174,8 @@ impl ConfigDelegateUnstableI for Config {
             kbd("H-x H-a") => action::ActionSequential(vec![
                 // Update an environment variable for xdg-desktop-portal.
                 Action::spawn(r#"sh -c 'systemctl --user set-environment WAYLAND_DISPLAY="$WAYLAND_DISPLAY"'"#),
+                // Launch `fcitx` daemon.
+                Action::spawn("fcitx5 -d"),
                 // Launch initial apps.
                 Action::spawn("alacritty --title on_workspace_0"),
                 Action::spawn("alacritty --title on_workspace_1"),

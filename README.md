@@ -54,7 +54,7 @@ kenoss@ is 80%-ish satisfied with daily use of it on a corporate machine.
 - [ ] xrandr (Multiple outputs, external displays)
 - [ ] Notification
 - [x] Screencast with Chrome
-- [ ] IME
+- [x] IME
 
 ## Comparison
 
@@ -163,6 +163,12 @@ If you feel there are not enough extension points, please file an issue.
 ### screenshot/screencast
 
 See [note/setup-xdg-desktop-portal.md](note/setup-xdg-desktop-portal.md).
+
+### IME
+
+Protocols `text_input_manager_v3`/`text_input_v3` are supported.
+
+See https://fcitx-im.org/wiki/Using_Fcitx_5_on_Wayland for example.
 
 ## TODO
 
