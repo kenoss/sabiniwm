@@ -45,7 +45,7 @@ kenoss@ is 80%-ish satisfied with daily use of it on a private machine, a MacBoo
 
 ### Milestone 2
 
-kenoss@ is 80%-ish satisfied daily use of it on corp machine.
+kenoss@ is 80%-ish satisfied with daily use of it on a corporate machine.
 
 - [x] External (wireless) mouse
   - [ ] (I need to look into the
@@ -109,7 +109,7 @@ $ # install to /usr/share/wayland-sessions/
 $ just install-sessions-head
 ```
 
-See also [tatarajo](https://github.com/kenoss/tatarajo) educational course.
+See also the [tatarajo](https://github.com/kenoss/tatarajo) educational course.
 
 ## How to run with udev backend
 
