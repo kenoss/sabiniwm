@@ -171,6 +171,7 @@ impl ConfigDelegateUnstableI for Config {
             kbd("H-x H-a") => action::ActionSequential(vec![
                 // Update an environment variable for xdg-desktop-portal.
                 Action::spawn(r#"sh -c 'systemctl --user set-environment WAYLAND_DISPLAY="$WAYLAND_DISPLAY"'"#),
+                // Launch initial apps.
                 Action::spawn("alacritty --title on_workspace_0"),
                 Action::spawn("alacritty --title on_workspace_1"),
                 Action::spawn("emacs"),
@@ -304,7 +305,7 @@ impl ConfigDelegateUnstableI for Config {
         }
 
         fn do_center_float(stackset: &mut StackSet, wq: &WindowQuery, ratio: (f32, f32, f32, f32)) {
-            // Use size = surface size or shrinked by ratio
+            // Use size = surface size or shrinked by ratio.
             let mut rect = *wq.get_primary_output_rect();
             let size = if let Some(size) = wq.surface_size() {
                 size
@@ -398,8 +399,7 @@ impl ConfigDelegateUnstableI for Config {
 
         match spawn_script() {
             Some(_) => {}
-            // For example, script was not found or not executable.
-            // Execute swaylock by default.
+            // If an executable script was not found, execute swaylock by default.
             None => {
                 info!("Config::on_lid_closed(): exec default hook");
                 let _ = std::process::Command::new("swaylock")
