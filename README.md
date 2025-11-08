@@ -2,41 +2,42 @@
 
 A tiling Wayland compositor, influenced by xmonad
 
-## Goal and non goal
+## Goals and non-goals
 
 ### Goal
 
-- Code over configuration: extensible/configurable like xmonad
-- Minimal and clear runtime dependency (No dependency to, e.g. Haskell.)
-- Simple, clean and mentainable code
+- Code over configuration: extensible/configurable, like xmonad
+- Minimal and clear runtime dependencies (No dependency on, e.g., Haskell.)
+- Simple, clean, and maintainable code
 
-### Non goal
+### Non-goals
 
-- Excessive use of animation
-  - Not a priority. Small use of animation might be supported in the future.
-- Configuration with file
-  - A user can implement it if they need it (like [spacemacs](https://github.com/syl20bnr/spacemacs)
-    for emacs). Please publish a crate if you implemented it.
-- Battery included (default configuration)
-  - The author believes that there is no good default values for configuration. Users must configure by theirselves.
+- Excessive use of animations
+  - Not a priority. Small use of animations might be supported in the future.
+- File-based configuration
+  - Users can implement it if they need it (like [spacemacs](https://github.com/syl20bnr/spacemacs)
+    for Emacs). Please publish a crate if you implement it.
+- Batteries included (default configuration)
+  - The author believes that there are no good default values for configuration. Users must
+    configure it themselves.
 
 ## Status
 
-Alpha, not stable.
+Alpha; not stable.
 
 In the short-term, you shouldn't expect API stability.
 
-The author kenoss@ is using it on Asahi Linux, M2 Macbook Air (main machine).
+The author, kenoss@, is using it on Asahi Linux, M2 MacBook Air (main machine).
 
 ## Roadmap
 
 ### Milestone 1
 
-kenoss@ is 80%-ish satisfied daily use of it on private machine, Macbook Air.
+kenoss@ is 80%-ish satisfied with daily use of it on a private machine, a MacBook Air.
 
-- [x] Fundamental udev support (Touchpad, Scaling for HiDPI display)
-- [x] Fundamental features of tiling
-- [x] Layouts (Tall, Full, Select, Toggle, margin, border)
+- [x] Fundamental udev support (Touchpad, scaling for HiDPI displays)
+- [x] Fundamental tiling features
+- [x] Layouts (Tall, Full, Select, Toggle, margins, borders)
 - [x] Floating windows
 - [x] Manage hook
 - [x] Session lock (`ext-session-lock-v1`)
@@ -47,7 +48,8 @@ kenoss@ is 80%-ish satisfied daily use of it on private machine, Macbook Air.
 kenoss@ is 80%-ish satisfied daily use of it on corp machine.
 
 - [x] External (wireless) mouse
-  - [ ] (I have to look into [[random disconnection issue](https://www.reddit.com/r/archlinux/comments/apnesg/usb_mouse_randomly_disconnecting/)].)
+  - [ ] (I need to look into the
+        [[random disconnection issue](https://www.reddit.com/r/archlinux/comments/apnesg/usb_mouse_randomly_disconnecting/)]).
 - [x] Authentication dialog with security keys (Floating windows + manage hooks)
 - [ ] xrandr (Multiple outputs, external displays)
 - [ ] Notification
@@ -58,29 +60,32 @@ kenoss@ is 80%-ish satisfied daily use of it on corp machine.
 
 ### [xmonad](https://xmonad.org/)
 
-xmonad is useful, matured, and the source of ideas of sabiniwm. But it lacks Wayland support, and never supports
-[[issue 1](https://github.com/xmonad/xmonad/issues/38)][[issue 2](https://github.com/xmonad/xmonad/issues/193)].
+xmonad is useful, mature, and the source of ideas for sabiniwm. But it lacks Wayland support, and
+has never supported it, as discussed in
+[[issue 1](https://github.com/xmonad/xmonad/issues/38)]
+[[issue 2](https://github.com/xmonad/xmonad/issues/193)].
 
 ### [niri](https://github.com/YaLTeR/niri)
 
-niri is beautiful and feature-rich tiliing Wayland compositor. But it's not xmonad-like.
+niri is a beautiful and feature-rich tiling Wayland compositor. But it's not xmonad-like.
 
-I recommend you to try it if you are not seeking xmonad alternatives.
-sabiniwm aims at opposite direction.
+I recommend you try it if you are not seeking xmonad alternatives.
+sabiniwm aims in the opposite direction.
 
 ### [waymonad](https://github.com/waymonad/waymonad)
 
-The project looks not active [[issue](https://github.com/waymonad/waymonad/issues/44#issuecomment-1665417483)].
+The project does not appear active
+[[issue](https://github.com/waymonad/waymonad/issues/44#issuecomment-1665417483)].
 
 ### Other tiling Wayland compositors
 
-Lots of them are written in C/C++. Not easy to read and write.
+Many of them are written in C/C++. They are not easy to read and write.
 
 ## Getting started
 
-No document is available.
+No documentation is available.
 
-You can start with running and modifying `sabiniwm_chocomint`/`sabiniwm_pistachio`.
+You can start by running and modifying `sabiniwm_chocomint`/`sabiniwm_pistachio`.
 
 ```shell
 $ cargo run -- --bin sabiniwm_chocomint
@@ -116,13 +121,13 @@ See [.github/workflows/ci.yaml](.github/workflows/ci.yaml).
 
 You can run it with udev backend in the following ways:
 
-- From TTY (i.e., turning off display manager): Just `cargo run` works.
+- From TTY (i.e., with the display manager turned off): Just `cargo run` works.
 - From display manager: Use `just install-sessions-stable` and select `sabiniwm`.
 
 ## TODO
 
-- smithay `d4780c5`: Consider to add `#[inline]` for derived operations.
-- smithay `f5aeb51`: Consider to add `#[inline]` for common operations.
+- smithay `d4780c5`: Consider adding `#[inline]` for derived operations.
+- smithay `f5aeb51`: Consider adding `#[inline]` for common operations.
 
 ## License
 
