@@ -11,6 +11,9 @@ license = { workspace = true }
 rust-version = { workspace = true }
 
 [dependencies]
+sabiniwm = { workspace = true }
+sabiniwm_base = { workspace = true }
+time = { workspace = true }
 tracing = { workspace = true }
 tracing-core = { workspace = true }
 tracing-subscriber = { workspace = true }

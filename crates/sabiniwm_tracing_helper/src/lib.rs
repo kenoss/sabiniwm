@@ -1,3 +1,5 @@
+pub mod debug;
+
 /// Filters out span context for event logging
 pub struct NoSpanContextFilter;
 
