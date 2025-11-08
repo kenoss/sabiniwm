@@ -100,7 +100,7 @@ $ just check-strict
 $ # watch
 $ cargo watch -c -s 'cargo build && just check-strict'
 $ # install to /usr/share/wayland-sessions/
-$ just install-session-dev
+$ just install-sessions-head
 ```
 
 See also [tatarajo](https://github.com/kenoss/tatarajo) educational course.
@@ -116,7 +116,7 @@ See [.github/workflows/ci.yaml](.github/workflows/ci.yaml).
 You can run it with udev backend in the following ways:
 
 - From TTY (i.e., turning off display manager): Just `cargo run` works.
-- From display manager: Use `just install-session-dev` and select `sabiniwm`.
+- From display manager: Use `just install-sessions-stable` and select `sabiniwm`.
 
 ## TODO
 
