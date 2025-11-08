@@ -81,6 +81,10 @@ The project does not appear active
 
 Many of them are written in C/C++. They are not easy to read and write.
 
+## Dependencies
+
+See [.github/workflows/ci.yaml](.github/workflows/ci.yaml).
+
 ## Getting started
 
 No documentation is available.
@@ -112,10 +116,6 @@ $ just install-sessions-head
 See also the [tatarajo](https://github.com/kenoss/tatarajo) educational course.
 
 ## How to run with udev backend
-
-### Dependencies
-
-See [.github/workflows/ci.yaml](.github/workflows/ci.yaml).
 
 ### Run
 
