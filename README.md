@@ -124,6 +124,46 @@ You can run it with udev backend in the following ways:
 - From TTY (i.e., with the display manager turned off): Just `cargo run` works.
 - From display manager: Use `just install-sessions-stable` and select `sabiniwm`.
 
+## Configuration
+
+sabiniwm is like xmonad.
+
+- xmonad is a framework/library to program your own WM. You don't write a configuration, you write a
+  Haskell program.
+- sabiniwm is a library to program your own Wayland compositor. You don't write a configuration, you
+  write a Rust program.
+
+See `sabiniwm_chocomint`/`sabiniwm_pistachio` crates. For example, `sabiniwm_pistachio` (bin crate)
+uses `sabiniwm` (lib crate). It configures the behavior by implementing/providing `Config`, a set of
+callbacks:
+
+```rust
+struct Config { ... }
+
+impl ConfigDelegateUnstableI for Config { ... }
+
+fn main() -> eyre::Result<()> {
+    let config_delegate = Box::new(Config::new(perfetto_toggle_handle));
+    SabiniwmState::run(config_delegate)?;
+
+    Ok(())
+}
+```
+
+Another mechanism for adding functionality is `Action`. An `Action` is an executable command that
+can be triggered to perform a specific task. For example, sabiniwm has predefined actions for window
+management in `sabiniwm::action::*`, and external crates can define their own, such as
+`sabiniwm_tracing_helper::debug::ActionTraceToggle`. This provides a flexible way to define and
+expose new behaviors.
+
+If you feel there are not enough extension points, please file an issue.
+
+## Set up environment
+
+### screenshot/screencast
+
+See [note/setup-xdg-desktop-portal.md](note/setup-xdg-desktop-portal.md).
+
 ## TODO
 
 - smithay `d4780c5`: Consider adding `#[inline]` for derived operations.
