@@ -1,3 +1,4 @@
+pub(crate) mod console;
 mod focused_vec;
 mod id;
 pub(crate) mod panic;

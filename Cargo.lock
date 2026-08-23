@@ -1905,6 +1905,7 @@ dependencies = [
  "envy",
  "eyre",
  "itertools 0.12.1",
+ "libc",
  "maplit",
  "procfs",
  "rstest",

@@ -147,6 +147,8 @@ impl SabiniwmState {
             // backend stderr goes to a console that is in `KD_GRAPHICS` mode. Log it so that it
             // ends up in the log file, which is the only thing the user can read afterwards.
             error!("{:?}", err);
+            // We may have taken the VT already. Don't leave the user with a black screen.
+            crate::util::console::restore_text_mode();
         })
     }
 
@@ -162,6 +164,9 @@ impl SabiniwmState {
         let event_loop = EventLoop::try_new().unwrap();
 
         let use_udev = envvar.generic.display.is_none() && envvar.generic.wayland_display.is_none();
+
+        // Everything from here until the compositor is up runs with the console already taken.
+        let watchdog = crate::util::console::InitWatchdog::start(envvar.sabiniwm.init_timeout());
 
         let backend = if use_udev {
             UdevBackend::new(&envvar, event_loop.handle().clone())?.into()
@@ -185,6 +190,8 @@ impl SabiniwmState {
         )?;
 
         this.backend.init(&mut this.inner)?;
+
+        watchdog.finish();
 
         this.run_loop(event_loop)?;
 
