@@ -321,6 +321,14 @@ impl BackendI for UdevBackend {
             })
             .map_err(|e| eyre::eyre!("{}", e))?;
 
+        // Failures while setting up a connector are only logged, so we can end up here with
+        // nothing to render to. That is indistinguishable from a hang for the user: the screen
+        // stays black even though the compositor is running fine. Fail loudly instead.
+        eyre::ensure!(
+            inner.space.outputs().next().is_some(),
+            "no output was set up; see the errors above"
+        );
+
         Ok(())
     }
 
