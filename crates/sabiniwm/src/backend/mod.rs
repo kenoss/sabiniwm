@@ -23,6 +23,11 @@ pub(crate) trait BackendI: DmabufHandlerDelegate {
     fn early_import(&mut self, surface: &wayland_server::protocol::wl_surface::WlSurface);
     fn update_led_state(&mut self, led_state: smithay::input::keyboard::LedState);
     fn change_vt(&mut self, vt: i32);
+    /// Starts or stops the render loop heartbeat. Returns whether it is running afterwards.
+    fn toggle_heartbeat(
+        &mut self,
+        loop_handle: &smithay::reexports::calloop::LoopHandle<'static, crate::state::SabiniwmState>,
+    ) -> bool;
 }
 
 #[derive(derive_more::From)]

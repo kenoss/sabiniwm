@@ -1,6 +1,23 @@
 use crate::action::action::ActionFnI;
+use crate::backend::BackendI;
 use crate::state::SabiniwmState;
 use sabiniwm_base::smithay_ext::utils::FixedTransform;
+
+/// Starts or stops the render loop heartbeat, which reports every few seconds how many frames
+/// were drawn, handed to KMS, refused by it, and actually scanned out.
+///
+/// Bind this to a key to look into a compositor that is up but shows nothing. Use
+/// `SABINIWM_HEARTBEAT_SEC` instead when the problem is at startup, where there is nothing to
+/// press a key on yet.
+#[derive(Debug, Clone)]
+pub struct ActionHeartbeatToggle;
+
+impl ActionFnI for ActionHeartbeatToggle {
+    fn exec(&self, state: &mut SabiniwmState) {
+        let loop_handle = state.inner.loop_handle.clone();
+        state.backend.toggle_heartbeat(&loop_handle);
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct ActionOutputApplyTransform(pub FixedTransform);

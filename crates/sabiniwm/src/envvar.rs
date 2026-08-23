@@ -26,6 +26,10 @@ pub(crate) struct EnvVarSabiniwm {
     /// See [`crate::util::console`] for why this exists.
     #[serde(default = "default_init_timeout_sec")]
     pub init_timeout_sec: u64,
+    /// Interval of the render loop heartbeat, in seconds. Unset or `0` disables it.
+    ///
+    /// See [`crate::action::debug::ActionHeartbeatToggle`] to turn it on at runtime instead.
+    pub heartbeat_sec: Option<u64>,
     #[serde(default = "default_bool::<false>")]
     pub disable_10bit: bool,
     #[serde(default = "default_bool::<true>")]
@@ -35,6 +39,13 @@ pub(crate) struct EnvVarSabiniwm {
 impl EnvVarSabiniwm {
     pub fn init_timeout(&self) -> std::time::Duration {
         std::time::Duration::from_secs(self.init_timeout_sec)
+    }
+
+    /// `None` if the heartbeat should not start on its own.
+    pub fn heartbeat_interval(&self) -> Option<std::time::Duration> {
+        self.heartbeat_sec
+            .filter(|sec| *sec > 0)
+            .map(std::time::Duration::from_secs)
     }
 }
 

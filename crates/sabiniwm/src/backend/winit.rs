@@ -205,6 +205,14 @@ impl BackendI for WinitBackend {
     fn change_vt(&mut self, _vt: i32) {
         error!("changing VT is not supported on winit backend");
     }
+
+    fn toggle_heartbeat(
+        &mut self,
+        _loop_handle: &smithay::reexports::calloop::LoopHandle<'static, SabiniwmState>,
+    ) -> bool {
+        error!("the heartbeat is not supported on winit backend");
+        false
+    }
 }
 
 impl EventHandler<WinitEvent> for SabiniwmState {

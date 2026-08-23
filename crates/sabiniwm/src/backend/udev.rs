@@ -89,6 +89,26 @@ const SUPPORTED_FORMATS: &[Fourcc] = &[
 ];
 const SUPPORTED_FORMATS_8BIT_ONLY: &[Fourcc] = &[Fourcc::Abgr8888, Fourcc::Argb8888];
 
+/// Interval used when the heartbeat is turned on at runtime rather than by the environment.
+const DEFAULT_HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
+
+/// Counters behind the heartbeat log.
+///
+/// Whether the compositor is alive is not observable from the outside once it has taken the VT,
+/// and neither is whether the frames it renders reach the screen. A failure to scan out looks
+/// exactly like a hang: a black screen. These tell the two apart after the fact.
+#[derive(Debug, Default)]
+struct RenderStats {
+    /// Frames drawn. A frame with no damage does not count.
+    rendered: u64,
+    /// Frames handed to KMS.
+    queued: u64,
+    /// Frames KMS refused.
+    failed: u64,
+    /// Vblanks received, i.e. frames that actually made it to the screen.
+    vblanks: u64,
+}
+
 #[derive(Debug, PartialEq)]
 struct UdevOutputId {
     primary_node: DrmNode,
@@ -110,6 +130,10 @@ pub(crate) struct UdevBackend {
     pointer_element: PointerElement,
     pointer_image: crate::cursor::Cursor,
     debug_flags: DebugFlags,
+    stats: RenderStats,
+    /// `Some` iff the heartbeat is running.
+    heartbeat: Option<RegistrationToken>,
+    heartbeat_interval: Duration,
 
     // Input
     libinput_context: libinput::Libinput,
@@ -198,9 +222,62 @@ impl UdevBackend {
             pointer_images: Vec::new(),
             pointer_element: PointerElement::default(),
             debug_flags: DebugFlags::empty(),
+            stats: RenderStats::default(),
+            heartbeat: None,
+            heartbeat_interval: envvar
+                .sabiniwm
+                .heartbeat_interval()
+                .unwrap_or(DEFAULT_HEARTBEAT_INTERVAL),
             libinput_context,
             input_devices: HashSet::new(),
         })
+    }
+
+    /// Starts or stops the heartbeat. Returns whether it is running afterwards.
+    pub(crate) fn toggle_heartbeat(
+        &mut self,
+        loop_handle: &LoopHandle<'static, SabiniwmState>,
+    ) -> bool {
+        match self.heartbeat.take() {
+            Some(token) => {
+                loop_handle.remove(token);
+                info!("heartbeat stopped");
+                false
+            }
+            None => {
+                self.start_heartbeat(loop_handle);
+                self.heartbeat.is_some()
+            }
+        }
+    }
+
+    fn start_heartbeat(&mut self, loop_handle: &LoopHandle<'static, SabiniwmState>) {
+        let interval = self.heartbeat_interval;
+        let result = loop_handle.insert_source(
+            smithay::reexports::calloop::timer::Timer::from_duration(interval),
+            move |_, _, state| {
+                state.backend_udev_mut().log_heartbeat();
+                smithay::reexports::calloop::timer::TimeoutAction::ToDuration(interval)
+            },
+        );
+        match result {
+            Ok(token) => {
+                self.heartbeat = Some(token);
+                info!(?interval, "heartbeat started");
+            }
+            Err(err) => error!("Failed to start the heartbeat: {}", err),
+        }
+    }
+
+    /// Reports what the render loop did since the last call. See [`RenderStats`].
+    fn log_heartbeat(&mut self) {
+        let RenderStats {
+            rendered,
+            queued,
+            failed,
+            vblanks,
+        } = std::mem::take(&mut self.stats);
+        info!(rendered, queued, failed, vblanks, "heartbeat");
     }
 
     /// Panics if called before the render node has been determined.
@@ -358,6 +435,10 @@ impl BackendI for UdevBackend {
             "no output was set up; see the errors above"
         );
 
+        if inner.envvar.sabiniwm.heartbeat_interval().is_some() {
+            self.start_heartbeat(&inner.loop_handle);
+        }
+
         Ok(())
     }
 
@@ -394,6 +475,10 @@ impl BackendI for UdevBackend {
         if let Err(e) = self.session.change_vt(vt) {
             warn!("changing VT failed: {e}");
         }
+    }
+
+    fn toggle_heartbeat(&mut self, loop_handle: &LoopHandle<'static, SabiniwmState>) -> bool {
+        UdevBackend::toggle_heartbeat(self, loop_handle)
     }
 }
 
@@ -1070,6 +1155,8 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
     ) {
         assert_eq!(node.ty(), NodeType::Primary);
 
+        self.backend.stats.vblanks += 1;
+
         let Some(backend) = self.backend.backends.get_mut(&node) else {
             error!("Trying to finish frame on non-existent backend {}", node);
             return;
@@ -1309,6 +1396,18 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
             clear_color,
             self.inner.frame_mode(),
         );
+        match &result {
+            Ok(true) => {
+                self.backend.stats.rendered += 1;
+                self.backend.stats.queued += 1;
+            }
+            Ok(false) => {}
+            Err(_) => {
+                self.backend.stats.rendered += 1;
+                self.backend.stats.failed += 1;
+            }
+        }
+
         let should_reschedule_render = match &result {
             Ok(has_rendered) => !has_rendered,
             Err(err) => {
