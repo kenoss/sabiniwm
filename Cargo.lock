@@ -1978,6 +1978,7 @@ dependencies = [
 name = "sabiniwm_tracing_helper"
 version = "0.0.0"
 dependencies = [
+ "eyre",
  "sabiniwm",
  "sabiniwm_base",
  "time",

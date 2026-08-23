@@ -80,8 +80,8 @@ fn tracing_init() -> eyre::Result<Option<ToggleFilterHandle<Registry>>> {
         }};
     }
     let (stdout_logging, file_logging) = if should_use_udev() {
-        const LOG_FILE: &str = "/tmp/sabiniwm.log";
-        let log_file = std::io::LineWriter::new(std::fs::File::create(LOG_FILE)?);
+        let path = sabiniwm_tracing_helper::log_file_path()?;
+        let log_file = std::io::LineWriter::new(std::fs::File::create(path)?);
         let writer = std::sync::Mutex::new(log_file);
         let file_logging = fmt_layer!().with_writer(writer);
         (None, Some(file_logging))

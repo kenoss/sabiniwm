@@ -11,6 +11,7 @@ license = { workspace = true }
 rust-version = { workspace = true }
 
 [dependencies]
+eyre = { workspace = true }
 sabiniwm = { workspace = true }
 sabiniwm_base = { workspace = true }
 time = { workspace = true }
