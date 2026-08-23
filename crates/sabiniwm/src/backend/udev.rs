@@ -403,20 +403,28 @@ impl BackendI for UdevBackend {
             }
         }
 
-        // Expose syncobj protocol if supported by primary GPU
+        // Expose the syncobj protocol if the device we render on supports it.
         //
-        // TODO: On a split display/render setup the render node's primary node is the render-only
-        // device, which we never open because it has no KMS, so this never triggers.
-        if let Some(primary_node) = selected_render_node
-            .node_with_type(NodeType::Primary)
-            .and_then(|x| x.ok())
-            && let Some(backend) = self.backends.get(&primary_node)
-        {
-            let import_device = backend.drm_output_manager.device().device_fd().clone();
-            if supports_syncobj_eventfd(&import_device) {
-                let syncobj_state =
-                    DrmSyncobjState::new::<SabiniwmState>(&inner.display_handle, import_device);
-                self.syncobj_state = Some(syncobj_state);
+        // It has to be that device: `linux-drm-syncobj-v1` imports the timelines a client creates
+        // on the GPU it renders with. On a split display/render setup that is not the device we
+        // scan out on -- and we never open it through the session, because it has no KMS -- so
+        // open its render node directly. Render nodes are made to be opened that way.
+        match open_render_node(&selected_render_node) {
+            Ok(import_device) if supports_syncobj_eventfd(&import_device) => {
+                self.syncobj_state = Some(DrmSyncobjState::new::<SabiniwmState>(
+                    &inner.display_handle,
+                    import_device,
+                ));
+                info!("Explicit sync (linux-drm-syncobj-v1) enabled");
+            }
+            Ok(_) => {
+                info!(
+                    "{} does not support syncobj eventfd; clients will use implicit sync",
+                    dev_path_or_na(&selected_render_node)
+                );
+            }
+            Err(err) => {
+                warn!(?err, "Failed to open the render node for explicit sync");
             }
         }
 
@@ -1596,6 +1604,25 @@ impl InnerState {
 
         Ok(rendered)
     }
+}
+
+/// Opens a [`DrmNode`] again, without going through the session.
+///
+/// Only sound for render nodes, which are unprivileged by design. Doing this to a primary node
+/// would fight with the session over who drives the device.
+fn open_render_node(node: &DrmNode) -> eyre::Result<DrmDeviceFd> {
+    let path = node
+        .dev_path()
+        .ok_or_else(|| eyre::eyre!("no device path for: {}", node))?;
+    let file = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(&path)
+        .wrap_err_with(|| format!("open render node: path = {}", path.display()))?;
+    // Note that this logs "Unable to become drm master" -- a render node never has a master.
+    Ok(DrmDeviceFd::new(DeviceFd::from(
+        std::os::fd::OwnedFd::from(file),
+    )))
 }
 
 /// Gets path of DRM node. Returns "N/A" if it's unavailable.

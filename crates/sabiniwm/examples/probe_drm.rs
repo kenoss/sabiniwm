@@ -32,6 +32,7 @@ use smithay::reexports::drm;
 use smithay::reexports::drm::control::Device as ControlDevice;
 use smithay::reexports::drm::{ClientCapability, Device as _};
 use smithay::utils::DeviceFd;
+use smithay::wayland::drm_syncobj::supports_syncobj_eventfd;
 use std::os::fd::{AsFd, BorrowedFd, OwnedFd};
 use std::path::{Path, PathBuf};
 
@@ -170,6 +171,15 @@ fn probe(path: &Path) -> eyre::Result<()> {
         return Ok(());
     };
 
+    // `linux-drm-syncobj-v1` needs the device we render on, not the one we scan out on.
+    println!(
+        "  syncobj eventfd          = {} on {}, {} on {}",
+        supports_syncobj_eventfd(&card_fd(path)?),
+        path.display(),
+        supports_syncobj_eventfd(&card_fd(&render_node.dev_path().unwrap_or_default())?),
+        dev_path_or_na(&render_node),
+    );
+
     let mut gpus = GpuManager::new(
         GbmGlesBackend::<GlesRenderer, DrmDeviceFd>::with_context_priority(ContextPriority::High),
     )?;
@@ -202,6 +212,21 @@ fn probe(path: &Path) -> eyre::Result<()> {
     }
 
     Ok(())
+}
+
+fn card_fd(path: &Path) -> eyre::Result<DrmDeviceFd> {
+    let file = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(path)?;
+    Ok(DrmDeviceFd::new(DeviceFd::from(OwnedFd::from(file))))
+}
+
+fn dev_path_or_na(node: &DrmNode) -> String {
+    match node.dev_path() {
+        Some(path) => format!("{}", path.display()),
+        None => "N/A".to_owned(),
+    }
 }
 
 fn primary_plane_formats(
