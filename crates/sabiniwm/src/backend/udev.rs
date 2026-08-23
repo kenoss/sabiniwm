@@ -536,6 +536,8 @@ enum DeviceAddError {
     DrmNode(CreateDrmNodeError),
     #[error("Failed to add device to GpuManager: {0}")]
     AddNode(egl::Error),
+    #[error("Failed to initialize EGL display: {0}")]
+    Egl(egl::Error),
 }
 
 fn get_surface_dmabuf_feedback(
@@ -646,11 +648,14 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
             })
             .unwrap();
 
-        let render_node =
-            EGLDevice::device_for_display(&unsafe { EGLDisplay::new(gbm.clone()).unwrap() })
+        let render_node = {
+            // SAFETY: `gbm` outlives the display.
+            let display = unsafe { EGLDisplay::new(gbm.clone()) }.map_err(DeviceAddError::Egl)?;
+            EGLDevice::device_for_display(&display)
                 .ok()
                 .and_then(|x| x.try_get_render_node().ok().flatten())
-                .unwrap_or(node);
+                .unwrap_or(node)
+        };
 
         // The first device that gets this far decides which render node we use. See
         // `UdevBackend::new()`.
