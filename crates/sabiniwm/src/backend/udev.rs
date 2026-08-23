@@ -9,6 +9,7 @@ use crate::util::EventHandler;
 use crate::view::window::WindowRenderElement;
 use crate::wl_global::WlGlobal;
 use eyre::WrapErr;
+use itertools::Itertools;
 use smithay::backend::SwapBuffersError;
 use smithay::backend::allocator::Fourcc;
 use smithay::backend::allocator::dmabuf::Dmabuf;
@@ -98,7 +99,11 @@ pub(crate) struct UdevBackend {
     session: LibSeatSession,
     dmabuf_state: Option<(DmabufState, DmabufGlobal)>,
     syncobj_state: Option<DrmSyncobjState>,
-    selected_render_node: DrmNode,
+    /// The render node the compositor renders on.
+    ///
+    /// `None` until either the environment designates one or the first device is added. See
+    /// [`UdevBackend::new`].
+    selected_render_node: Option<DrmNode>,
     gpus: GpuManager<GbmGlesBackend<GlesRenderer, DrmDeviceFd>>,
     backends: HashMap<DrmNode, BackendData>,
     pointer_images: Vec<(xcursor::parser::Image, MemoryRenderBuffer)>,
@@ -124,41 +129,43 @@ impl UdevBackend {
         /*
          * Initialize the compositor
          */
-        let device_node_path = if let Some(path) = &envvar.sabiniwm.drm_device_node {
-            path.clone()
-        } else {
-            smithay::backend::udev::primary_gpu(session.seat())
-                .wrap_err("get primary GPU")?
-                .ok_or_else(|| eyre::eyre!("GPU not found"))?
-        };
-        let device_node = DrmNode::from_path(device_node_path.clone()).wrap_err_with(|| {
-            format!(
-                "open DRM device node: path = {}",
-                device_node_path.display()
-            )
-        })?;
-        let selected_render_node = if device_node.ty() == NodeType::Render {
-            device_node
-        } else {
-            device_node
-                .node_with_type(NodeType::Render)
-                .ok_or_else(|| {
-                    eyre::eyre!(
-                        "no corresponding render node for: path = {}",
-                        dev_path_or_na(&device_node)
-                    )
-                })?
-                .wrap_err_with(|| {
-                    format!(
-                        "get render node for: path = {}",
-                        dev_path_or_na(&device_node)
-                    )
-                })?
-        };
-        info!(
-            "Using {} as render node.",
-            dev_path_or_na(&selected_render_node)
-        );
+        // Note that we don't auto detect the render node here. `smithay::backend::udev::
+        // primary_gpu()` looks like the thing to use, but when the device has no PCI parent --
+        // always the case on Apple silicon -- it degrades to "the lexicographically first
+        // /dev/dri/card*". On a split display/render SoC that is the display-only device, which
+        // has no render node of its own, and we would refuse to start on a perfectly working
+        // machine.
+        //
+        // wlroots picks the first device that has KMS and then asks EGL which render node to use;
+        // see `open_if_kms()` and `get_render_name()` in wlroots. We do the same, but lazily:
+        // `device_added()` fails for a device without KMS, and derives the render node with
+        // `EGLDevice::try_get_render_node()`, which resolves correctly even for a display-only
+        // device because Mesa opens the render node under the hood. The first device that gets
+        // that far decides which renderer we use.
+        let selected_render_node = envvar
+            .sabiniwm
+            .drm_device_node
+            .as_ref()
+            .map(|path| -> eyre::Result<_> {
+                let node = DrmNode::from_path(path)
+                    .wrap_err_with(|| format!("open DRM device node: path = {}", path.display()))?;
+
+                if node.ty() == NodeType::Render {
+                    return Ok(node);
+                }
+
+                node.node_with_type(NodeType::Render)
+                    .ok_or_else(|| {
+                        eyre::eyre!(
+                            "no corresponding render node for: path = {}",
+                            dev_path_or_na(&node)
+                        )
+                    })?
+                    .wrap_err_with(|| {
+                        format!("get render node for: path = {}", dev_path_or_na(&node))
+                    })
+            })
+            .transpose()?;
 
         let gpus = GpuManager::new(GbmGlesBackend::with_context_priority(ContextPriority::High))?;
 
@@ -195,6 +202,13 @@ impl UdevBackend {
             input_devices: HashSet::new(),
         })
     }
+
+    /// Panics if called before the render node has been determined.
+    fn selected_render_node(&self) -> DrmNode {
+        self.selected_render_node.expect(
+            /* `init()` bails out if it is still `None`. */ "render node is determined",
+        )
+    }
 }
 
 impl smithay::wayland::buffer::BufferHandler for UdevBackend {
@@ -213,11 +227,11 @@ impl crate::backend::DmabufHandlerDelegate for UdevBackend {
     ) -> bool {
         let ret = self
             .gpus
-            .single_renderer(&self.selected_render_node)
+            .single_renderer(&self.selected_render_node())
             .and_then(|mut renderer| renderer.import_dmabuf(&dmabuf, None))
             .is_ok();
         if ret {
-            dmabuf.set_node(self.selected_render_node);
+            dmabuf.set_node(self.selected_render_node());
         }
         ret
     }
@@ -230,7 +244,14 @@ impl BackendI for UdevBackend {
          */
         let udev_backend = smithay::backend::udev::UdevBackend::new(&inner.seat_name)?;
 
-        for (device_id, path) in udev_backend.device_list() {
+        // `device_list()` has no defined order, but which device is added first decides which
+        // render node we use. Make that reproducible across runs.
+        let device_list = udev_backend
+            .device_list()
+            .sorted_by_key(|(_, path)| path.to_owned())
+            .collect_vec();
+
+        for (device_id, path) in device_list {
             if let Err(err) = DrmNode::from_dev_id(device_id)
                 .map_err(DeviceAddError::DrmNode)
                 .and_then(|node| {
@@ -245,23 +266,30 @@ impl BackendI for UdevBackend {
             }
         }
 
+        // Every device either failed or has no KMS, so there is nothing to render on and nothing
+        // to render to.
+        let Some(selected_render_node) = self.selected_render_node else {
+            eyre::bail!("no usable DRM device was found; see the errors above");
+        };
+        info!(
+            "Using {} as render node.",
+            dev_path_or_na(&selected_render_node)
+        );
+
         inner.shm_state.update_formats(
             self.gpus
-                .single_renderer(&self.selected_render_node)
+                .single_renderer(&selected_render_node)
                 .unwrap()
                 .shm_formats(),
         );
 
         #[cfg_attr(not(feature = "egl"), allow(unused_mut))]
-        let mut renderer = self
-            .gpus
-            .single_renderer(&self.selected_render_node)
-            .unwrap();
+        let mut renderer = self.gpus.single_renderer(&selected_render_node).unwrap();
 
         #[cfg(feature = "egl")]
         {
             info!(
-                ?self.selected_render_node,
+                ?selected_render_node,
                 "Trying to initialize EGL Hardware Acceleration",
             );
             match renderer.bind_wl_display(&inner.display_handle) {
@@ -273,8 +301,7 @@ impl BackendI for UdevBackend {
         // init dmabuf support with format list from selected render node
         let dmabuf_formats = renderer.dmabuf_formats();
         let default_feedback =
-            DmabufFeedbackBuilder::new(self.selected_render_node.dev_id(), dmabuf_formats)
-                .build()?;
+            DmabufFeedbackBuilder::new(selected_render_node.dev_id(), dmabuf_formats).build()?;
         let mut dmabuf_state = DmabufState::new();
         let global = dmabuf_state.create_global_with_default_feedback::<SabiniwmState>(
             &inner.display_handle,
@@ -289,7 +316,7 @@ impl BackendI for UdevBackend {
                 surface_data.dmabuf_feedback = surface_data.dmabuf_feedback.take().or_else(|| {
                     surface_data.drm_output.with_compositor(|compositor| {
                         get_surface_dmabuf_feedback(
-                            self.selected_render_node,
+                            selected_render_node,
                             surface_data.render_node,
                             gpus,
                             compositor.surface(),
@@ -300,8 +327,10 @@ impl BackendI for UdevBackend {
         }
 
         // Expose syncobj protocol if supported by primary GPU
-        if let Some(primary_node) = self
-            .selected_render_node
+        //
+        // TODO: On a split display/render setup the render node's primary node is the render-only
+        // device, which we never open because it has no KMS, so this never triggers.
+        if let Some(primary_node) = selected_render_node
             .node_with_type(NodeType::Primary)
             .and_then(|x| x.ok())
             && let Some(backend) = self.backends.get(&primary_node)
@@ -345,7 +374,7 @@ impl BackendI for UdevBackend {
     }
 
     fn early_import(&mut self, surface: &wayland_server::protocol::wl_surface::WlSurface) {
-        if let Err(err) = self.gpus.early_import(self.selected_render_node, surface) {
+        if let Err(err) = self.gpus.early_import(self.selected_render_node(), surface) {
             warn!("Early buffer import failed: {}", err);
         }
     }
@@ -623,6 +652,10 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
                 .and_then(|x| x.try_get_render_node().ok().flatten())
                 .unwrap_or(node);
 
+        // The first device that gets this far decides which render node we use. See
+        // `UdevBackend::new()`.
+        self.backend.selected_render_node.get_or_insert(render_node);
+
         self.backend
             .gpus
             .as_mut()
@@ -689,6 +722,8 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
         crtc: crtc::Handle,
     ) {
         assert_eq!(node.ty(), NodeType::Primary);
+
+        let selected_render_node = self.backend.selected_render_node();
 
         let mut aux = || -> eyre::Result<()> {
             let device = self.backend.backends.get_mut(&node).ok_or_else(|| {
@@ -849,7 +884,7 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
                     compositor.set_debug_flags(self.backend.debug_flags);
 
                     get_surface_dmabuf_feedback(
-                        self.backend.selected_render_node,
+                        selected_render_node,
                         device.render_node,
                         &mut self.backend.gpus,
                         compositor.surface(),
@@ -1149,6 +1184,8 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
     }
 
     fn render_surface(&mut self, node: DrmNode, crtc: crtc::Handle) {
+        let selected_render_node = self.backend.selected_render_node();
+
         let Some(device) = self.backend.backends.get_mut(&node) else {
             return;
         };
@@ -1181,7 +1218,6 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
             .get_image(1 /*scale*/, self.inner.clock.now().into());
 
         let render_node = surface.render_node;
-        let selected_render_node = self.backend.selected_render_node;
         let mut renderer = if selected_render_node == render_node {
             self.backend.gpus.single_renderer(&render_node)
         } else {
