@@ -717,7 +717,8 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
         let fd = DrmDeviceFd::new(DeviceFd::from(fd));
 
         let (drm, notifier) =
-            DrmDevice::new(fd.clone(), true).map_err(DeviceAddError::DrmDevice)?;
+            DrmDevice::new(fd.clone(), self.inner.envvar.sabiniwm.drm_reset_state)
+                .map_err(DeviceAddError::DrmDevice)?;
         let gbm = GbmDevice::new(fd).map_err(DeviceAddError::GbmDevice)?;
 
         let registration_token = self
@@ -1425,14 +1426,18 @@ impl SabiniwmStateWithConcreteBackend<'_, UdevBackend> {
                     },
                     SwapBuffersError::ContextLost(err) => match err.downcast_ref::<DrmError>() {
                         Some(DrmError::TestFailed(_)) => {
-                            // reset the complete state, disabling all connectors and planes in case we hit a test failed
-                            // most likely we hit this after a tty switch when a foreign master changed CRTC <-> connector bindings
-                            // and we run in a mismatch
-                            device
-                                .drm_output_manager
-                                .device_mut()
-                                .reset_state()
-                                .expect("failed to reset drm device");
+                            // We most likely hit this after a tty switch, where a foreign master
+                            // changed the CRTC <-> connector bindings and we now run in a
+                            // mismatch. Resetting the complete state, disabling all connectors and
+                            // planes, gets us back to something we can commit on -- on hardware
+                            // that tolerates it.
+                            if self.inner.envvar.sabiniwm.drm_reset_state {
+                                if let Err(err) =
+                                    device.drm_output_manager.device_mut().reset_state()
+                                {
+                                    error!("Failed to reset drm device: {:?}", err);
+                                }
+                            }
                             true
                         }
                         _ => panic!("Rendering loop lost: {}", err),

@@ -30,6 +30,15 @@ pub(crate) struct EnvVarSabiniwm {
     ///
     /// See [`crate::action::debug::ActionHeartbeatToggle`] to turn it on at runtime instead.
     pub heartbeat_sec: Option<u64>,
+    /// Reset the DRM device to a known state, i.e. disable all connectors and planes.
+    ///
+    /// smithay's `anvil` does this when opening the device, and again when a commit test fails,
+    /// so that a previous compositor cannot leave the device in a state our own commits trip
+    /// over. Apple's display coprocessor does not survive it: disabling every connector powers
+    /// the DCP down, and once the following modeset powers it back up the CRTC never completes a
+    /// page flip again. wlroots never resets the device either.
+    #[serde(default = "default_bool::<false>")]
+    pub drm_reset_state: bool,
     #[serde(default = "default_bool::<false>")]
     pub disable_10bit: bool,
     #[serde(default = "default_bool::<true>")]
