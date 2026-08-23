@@ -142,6 +142,15 @@ where
 
 impl SabiniwmState {
     pub fn run(config_delegate: Box<dyn ConfigDelegateUnstableI>) -> eyre::Result<()> {
+        Self::run_aux(config_delegate).inspect_err(|err| {
+            // Returning the error to `main()` only gets it printed to stderr, and with the udev
+            // backend stderr goes to a console that is in `KD_GRAPHICS` mode. Log it so that it
+            // ends up in the log file, which is the only thing the user can read afterwards.
+            error!("{:?}", err);
+        })
+    }
+
+    fn run_aux(config_delegate: Box<dyn ConfigDelegateUnstableI>) -> eyre::Result<()> {
         use crate::backend::udev::UdevBackend;
         #[cfg(feature = "winit")]
         use crate::backend::winit::WinitBackend;
